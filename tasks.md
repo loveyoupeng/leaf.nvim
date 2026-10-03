@@ -90,4 +90,4 @@ mapping snippets, and `:h leaf` vimdoc.
 - [x] `nvim --headless` test run green for resolve + config specs — 23/23
 - [x] Headless smoke: real binary, real buffer, Viewer opens and closes — tests/smoke.lua (also verified inside the full LazyVim profile)
 - [x] README: install spec, options table, mappings; `doc/leaf.txt` vimdoc
-- [ ] Stylua clean; committed and pushed to origin/main
+- [x] Stylua clean; committed and pushed to origin/main — c19e27e
