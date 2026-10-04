@@ -95,8 +95,10 @@ file under its cursor instead.
   verified against its source). Read-only; `q`/`<Esc>` close.
 - **Interactive Mode**: `termopen("leaf --watch <path>")` in the window's
   buffer. Keys pass to the TUI; leaf's quit ends the job and the plugin
-  wipes the window. A `<C-\>` terminal-map force-closes. Mouse wheel is
-  forwarded manually: Neovim does not deliver wheel events to
+  wipes the window. No plugin mapping may shadow user keys: the native
+  `<C-\><C-n>` terminal escape stays intact (an earlier `<C-\>`
+  force-close override was removed for exactly this reason). Mouse wheel
+  is forwarded manually: Neovim does not deliver wheel events to
   mouse-capturing terminal jobs (verified empirically — the event reaches
   Nvim's input layer and dies there), so the viewer maps
   `<ScrollWheelUp/Down>` to `chansend` of arrow keys — leaf's line-scroll
@@ -110,15 +112,22 @@ file under its cursor instead.
   File Source (explicit path, explorer node, picker selection) takes over
   the content **Window** like a normal `:edit` — invoked from an explorer
   sidebar, the target is the previously visited window, so the sidebar and
-  every split keep their geometry. Closing the Viewer swaps the displaced
-  buffer back in; the user switching that window to another buffer
-  (`:b …`) counts as closing the Viewer (`BufWinLeave`). Float (centered,
-  `width_ratio`/`height_ratio` 0.7, rounded border) and Tab (render-only
-  tabpage) are opt-in: `position = "float" | "tab"`; `"split"`/`"window"`
-  force their placement for any source. Rationale: a file render has no
-  source window to sit beside, and opening it "as other buffers open" is
-  the muscle memory explorer users already have — a fullscreen tab hides
-  the very layout the user asked to preserve.
+  every split keep their geometry. The frame is a listed, named buffer
+  (`leaf://<file>`), so it appears as a normal buffer tab. Closing the
+  Viewer swaps the displaced buffer back in; the user switching that
+  window to another buffer (`:b …`) counts as closing the Viewer
+  (`BufWinLeave`). Opening a file from an explorer with `<cr>` would
+  force a split (explorers refuse terminal-hosting windows; verified
+  against neo-tree's actual event sequence), so a window born showing
+  the sidebar (`WinNew`) that then receives a real file is folded: the
+  file takes over the Viewer's window, the spare split closes, geometry
+  unchanged. Float (centered, `width_ratio`/`height_ratio` 0.7, rounded
+  border) and Tab (render-only tabpage) are opt-in:
+  `position = "float" | "tab"`; `"split"`/`"window"` force their placement
+  for any source. Rationale: a file render has no source window to sit
+  beside, and opening it "as other buffers open" is the muscle memory
+  explorer users already have — a fullscreen tab hides the very layout
+  the user asked to preserve.
 - **Source semantics**: Static renders *buffer content* when targeting the
   current buffer (dump lines to a temp `.md`; unsaved edits included) and
   the *file on disk* for file sources. Interactive always uses the on-disk

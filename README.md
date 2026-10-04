@@ -42,10 +42,14 @@ fuzzy Markdown picker. glow.nvim-style glue, in the spirit of LazyVim.
 - `:Leaf` anywhere else (non-Markdown buffer, nothing to infer) — opens the
   Markdown **Picker** (fzf-lua)
 - Static viewer keys: `q`/`<Esc>` close; `j`/`k`/`<C-d>`/`<C-u>` and the
-  mouse wheel scroll the render (it's a normal terminal buffer, full
+  mouse wheel scroll the render (it's a terminal buffer with full
   scrollback). Interactive: wheel scrolls (forwarded as arrow keys —
   Neovim does not forward wheel events to terminal apps), leaf's own keys
-  quit; `<C-\>` force-closes.
+  quit; `<C-\><C-n>` returns to normal mode where all your mappings live,
+  then `q`/`<Esc>` closes there too. No keybindings are shadowed.
+- The render is a normal listed buffer (`leaf://<file>` in your
+  bufferline). If you `<cr>`-open a file in the explorer while it shows,
+  the file takes its window — no surprise splits.
 - Both modes show a one-line key hint in the winbar; hide with
   `show_hints = false`.
 

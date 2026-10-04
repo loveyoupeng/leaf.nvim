@@ -125,6 +125,13 @@ end
 if vim.bo[vim.api.nvim_win_get_buf(host_win)].filetype ~= "leaf" then
   fail("window placement did not take over the invoking window")
 end
+local frame_buf = vim.api.nvim_win_get_buf(host_win)
+if not vim.bo[frame_buf].buflisted then
+  fail("render frame is not a listed buffer")
+end
+if not vim.api.nvim_buf_get_name(frame_buf):find("^leaf://") then
+  fail("render frame has no leaf:// name: " .. vim.api.nvim_buf_get_name(frame_buf))
+end
 if not viewer_has("Second File") then
   fail("render never showed 'Second File'")
 end
@@ -185,6 +192,48 @@ if #vim.api.nvim_list_wins() ~= wins_before then
   fail("swap-away changed the window count")
 end
 
+-- 4e. A window born *showing the sidebar* (WinNew) that then receives a
+-- real file folds back into the taken-over window: explorers refuse
+-- terminal windows and route around them with a split. Mirrors the traced
+-- neo-tree+edgy event sequence: fake sidebar stays open, its split folds.
+leaf.toggle({ fargs = { other } })
+if not vim.wait(4000, function()
+  return leaf.is_open()
+end, 50) then
+  fail("viewer did not reopen for fold test")
+end
+vim.cmd("vsplit")
+local side_win = vim.api.nvim_get_current_win()
+local fake_sidebar = vim.api.nvim_create_buf(false, true)
+vim.bo[fake_sidebar].filetype = "neo-tree"
+vim.api.nvim_win_set_buf(side_win, fake_sidebar)
+vim.api.nvim_set_current_win(side_win)
+vim.cmd("vsplit") -- born showing the sidebar buffer, like neo-tree's route
+local routed_win = vim.api.nvim_get_current_win()
+local fourth = vim.fn.tempname() .. ".md"
+vim.fn.writefile({ "# Folded File" }, fourth)
+vim.cmd("edit " .. vim.fn.fnameescape(fourth))
+if not vim.wait(3000, function()
+  return not leaf.is_open()
+end, 50) then
+  fail("explorer split was not folded into the viewer window")
+end
+if vim.api.nvim_win_is_valid(routed_win) then
+  fail("fold left the spare split behind")
+end
+if
+  vim.fn.fnamemodify(vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(host_win)), ":p")
+  ~= vim.fn.fnamemodify(fourth, ":p")
+then
+  fail("folded file is not in the taken-over window")
+end
+vim.api.nvim_win_close(side_win, true) -- tear down the fake sidebar
+if #vim.api.nvim_list_wins() ~= wins_before then
+  fail("fold changed the window count")
+end
+vim.cmd("bwipeout! " .. vim.fn.fnameescape(fourth))
+vim.fn.delete(fourth)
+
 -- 6. Interactive Mode: hint winbar, wheel forwarded as scroll keys, closes cleanly.
 local big = vim.fn.tempname() .. ".md"
 local big_lines = { "# Big Doc", "" }
@@ -208,8 +257,11 @@ if vim.bo[vim.api.nvim_win_get_buf(iwin)].filetype ~= "leaf" then
   end
 end
 vim.api.nvim_set_current_win(iwin)
-if not vim.wo[iwin].winbar:find("force-close", 1, true) then
+if not vim.wo[iwin].winbar:find("wheel scrolls", 1, true) then
   fail("interactive viewer shows no hint winbar: " .. vim.inspect(vim.wo[iwin].winbar))
+end
+if vim.fn.maparg("<C-\\>", "t", false, true).buffer == 1 then
+  fail("interactive viewer must not shadow the native <C-\\><C-n> escape")
 end
 local function mu_has(text)
   for _, l in ipairs(viewer_lines()) do

@@ -19,13 +19,14 @@ leaf TUI running live inside the window.
 _Avoid_: style, flavor
 
 **Placement**:
-Where the Viewer appears. **Window**: the render takes over the content
-window like a normal `:edit` (previous window when invoked from an
-explorer sidebar); closing swaps the displaced buffer back in. **Split**:
-vertical split right of the invoking window. **Float**: centered floating
-window; opt-in only, never the default. **Tab**: new tabpage holding only
-the render; closing the Viewer closes the tab. `position = "auto"`: Split
-for a Buffer Source, Window for a File Source.
+Where the Viewer appears. **Window**: the render, a listed named buffer,
+takes over the content window like a normal `:edit` (previous window when
+invoked from an explorer sidebar); closing swaps the displaced buffer back
+in, and a file the explorer opens around it folds into its window.
+**Split**: vertical split right of the invoking window. **Float**:
+centered floating window; opt-in only, never the default. **Tab**: new
+tabpage holding only the render; closing the Viewer closes the tab.
+`position = "auto"`: Split for a Buffer Source, Window for a File Source.
 _Avoid_: layout, position (the config key, not the concept), popup
 
 **Source**:

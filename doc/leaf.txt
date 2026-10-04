@@ -14,8 +14,11 @@ and one of four Placements:
 
 - Window: the render takes over the content window like a normal |:edit|
           (the previously visited window when invoked from an explorer
-          sidebar); closing swaps the displaced buffer back in, and
-          switching that window to another buffer closes the Viewer
+          sidebar) as a listed, named buffer (`leaf://<file>`); closing
+          swaps the displaced buffer back in, switching that window to
+          another buffer closes the Viewer, and a file the explorer opens
+          around the terminal host folds back into the taken-over window
+          instead of leaving a spare split
 - Split:  vertical split right of the invoking window
 - Float:  centered floating window (opt-in only, never the default)
 - Tab:    new tabpage holding only the render; closing the Viewer closes
@@ -62,7 +65,8 @@ COMMANDS                                                        *leaf-commands*
         leaf.nvim forwards it as arrow keys, since Neovim does not forward
         wheel events to mouse-capturing terminal jobs (see
         leaf-config `scroll_lines` for the step); leaf's own quit key
-        exits; <C-\> force-closes.
+        exits. No plugin keys shadow your bindings: use the native
+        <C-\><C-n> to leave terminal mode, then q or <Esc> closes.
 
         Both modes show a one-line key hint in the winbar; disable with
         `show_hints = false`.

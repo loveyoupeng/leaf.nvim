@@ -21,6 +21,8 @@ local M = {}
 ---@field tabpage? integer Owning tabpage — set for Tab placement only
 ---@field prev_buf? integer Buffer displaced by a Window take-over, restored on close
 ---@field leave_au? integer Close-on-swap autocmd for the current frame (Window placement)
+---@field known_wins table<integer, boolean>? Windows existing at open (Window placement)
+---@field pending_wins table<integer, boolean>? Windows born showing the Explorer (Window placement)
 
 ---@type leaf.ViewerState?
 local state
@@ -203,12 +205,20 @@ local function fresh_frame()
     pcall(vim.api.nvim_del_autocmd, state.leave_au)
     state.leave_au = nil
   end
-  local buf = vim.api.nvim_create_buf(false, true)
+  -- Listed, named frame: the render shows as a normal buffer tab, same as
+  -- any opened file.
+  local buf = vim.api.nvim_create_buf(true, true)
   vim.api.nvim_win_set_buf(state.win, buf)
   if old and vim.api.nvim_buf_is_valid(old) then
     pcall(vim.api.nvim_buf_delete, old, { force = true })
   end
   state.buf = buf
+  local src = state.request.source.path
+  pcall(
+    vim.api.nvim_buf_set_name,
+    buf,
+    "leaf://" .. (src and vim.fn.fnamemodify(src, ":t") or ("buffer-" .. tostring(state.request.source.bufnr)))
+  )
   vim.bo[buf].filetype = "leaf"
   local opts = { silent = true, buffer = buf }
   vim.keymap.set("n", "q", close_mapping, opts)
@@ -315,7 +325,7 @@ local function apply_hint()
     return
   end
   if state.request.mode == "interactive" then
-    vim.wo[state.win].winbar = " leaf · wheel scrolls · <C-\\> force-close "
+    vim.wo[state.win].winbar = " leaf · wheel scrolls · <C-\\><C-n> your keys "
   else
     vim.wo[state.win].winbar = " leaf · q/<Esc> close · j/k · <C-d>/<C-u> scroll "
   end
@@ -338,8 +348,8 @@ local function attach_interactive(request)
       end,
     })
   end)
-  -- Escape hatch when the TUI misbehaves.
-  vim.keymap.set("t", "<C-\\>", close_mapping, { buffer = buf, desc = "Close leaf viewer" })
+  -- No <C-\> mapping: overriding it would kill the native <C-\><C-n>
+  -- terminal-mode escape, trapping the user's keys inside the TUI.
   -- Neovim does not forward wheel events to mouse-capturing terminal jobs;
   -- forward them ourselves as arrow keys (the TUI's line scroll). Arrows
   -- over j/k so they stay harmless if a leaf popup/search has key focus.
@@ -388,6 +398,72 @@ function M.open(request)
       end)
     end,
   })
+
+  if request.placement == "window" then
+    state.known_wins = {}
+    state.pending_wins = {}
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      state.known_wins[w] = true
+    end
+    -- Explorers won't :edit into a terminal window, so opening a file while
+    -- a Window Viewer holds the content window forces them into a split.
+    -- Fold that split back: the file takes the Viewer's seat, the spare
+    -- window closes, layout untouched.
+    -- WinNew arms: a window born showing the sidebar is the explorer
+    -- routing around our terminal-hosting window (BufWinEnter does not
+    -- fire for the sidebar's duplicated buffer, so WinNew is the tell).
+    vim.api.nvim_create_autocmd("WinNew", {
+      group = state.augroup,
+      callback = function()
+        if not state or state.request.placement ~= "window" then
+          return
+        end
+        local win = vim.api.nvim_get_current_win()
+        if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "neo-tree" then
+          state.pending_wins[win] = true
+        end
+      end,
+    })
+    vim.api.nvim_create_autocmd("BufWinEnter", {
+      group = state.augroup,
+      callback = function(ev)
+        if not state or state.request.placement ~= "window" then
+          return
+        end
+        -- Capture at event time: :edit chains queue several of these
+        -- before the event loop drains, changing focus at each step.
+        local win = vim.api.nvim_get_current_win()
+        local buf = ev.buf
+        if state.pending_wins[win] then
+          state.pending_wins[win] = nil
+          state.known_wins[win] = true
+          local host = state.win
+          if vim.api.nvim_win_is_valid(host) and vim.bo[buf].buftype == "" and vim.api.nvim_buf_get_name(buf) ~= "" then
+            vim.schedule(function()
+              if not state or state.request.placement ~= "window" then
+                return
+              end
+              local frame = state.buf
+              stop_job()
+              cleanup_autocmds()
+              cleanup_tmpfile()
+              pcall(vim.api.nvim_win_set_buf, host, buf)
+              if vim.api.nvim_win_is_valid(win) then
+                pcall(vim.api.nvim_win_close, win, true)
+              end
+              if vim.api.nvim_buf_is_valid(frame) then
+                pcall(vim.api.nvim_buf_delete, frame, { force = true })
+              end
+              state = nil
+              pcall(vim.api.nvim_set_current_win, host)
+            end)
+          end
+          return
+        end
+        state.known_wins[win] = true
+      end,
+    })
+  end
 
   if request.mode == "interactive" then
     attach_interactive(request)

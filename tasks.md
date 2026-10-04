@@ -154,3 +154,22 @@ in; the user swapping that window to another buffer closes the Viewer.
 - [x] `:buffer` swap-away closes the Viewer (BufWinLeave) and survives static frame swaps — smoke step 4d + 4a
 - [x] Verified against real LazyVim + neo-tree: no new tab, sidebar intact, sidebar-initiated toggle closes and restores — e2e driver
 - [x] Docs: CONTEXT.md (Placement gains Window), SPEC.md, README.md, doc/leaf.txt
+
+## 10: Render box behaves like a normal buffer — listed frames, explorer fold, no key shadowing
+
+**Blocked by:** 09
+
+**What to build:** three fixes from dogfooding. (a) Frames become listed,
+named buffers (`leaf://<file>`) so a render appears as a normal buffer
+tab. (b) `<cr>`-opening a file from the explorer while a Window Viewer is
+showing no longer splits: explorers refuse terminal-hosting windows, so a
+window born showing the sidebar (`WinNew`) that then receives a real file
+(`BufWinEnter`) is folded — the file takes the Viewer's seat and the spare
+split closes (event sequence verified by tracing real neo-tree+edgy).
+(c) The interactive `<C-\>` force-close map is removed: it shadowed the
+native `<C-\><C-n>` terminal escape and trapped all user keybindings.
+
+- [x] Frames listed and named (`leaf://`) — smoke step 4
+- [x] Explorer-forced split folds into the taken-over window, geometry intact — smoke step 4e + real-profile e2e (neo-tree event trace verified)
+- [x] No terminal-mode mapping shadows `<C-\>`; native escape intact — code removal + smoke assertion
+- [x] Docs: README, doc/leaf.txt, SPEC.md
