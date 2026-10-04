@@ -10,29 +10,42 @@ output — runs in one of two Modes:
 - Static:       one-shot `leaf --inline` output piped into a terminal buffer
 - Interactive:  the leaf TUI running live via |termopen()|
 
-and one of two Placements:
+and one of three Placements:
 
-- Split:  vertical split right of the source buffer
-- Float:  centered floating window
+- Split:  vertical split right of the invoking window
+- Float:  centered floating window (opt-in only, never the default)
+- Tab:    new tabpage holding only the render; closing the Viewer closes
+          the tab and returns to the previously active one
 
 Editing stays in the normal buffer. The Viewer refreshes on |:write| —
-Static re-renders from the buffer (including unsaved content); Interactive
-tracks the on-disk file with leaf's `--watch`.
+Static re-renders whenever the source path is written, by any buffer
+(including unsaved content of the current buffer); Interactive tracks the
+on-disk file with leaf's `--watch`.
 
 Requires Neovim >= 0.10 and the `leaf` binary on $PATH (or |leaf.setup()|
-`leaf_path`). A Markdown Picker needs telescope.nvim or fzf-lua.
+`leaf_path`). A Markdown Picker needs fzf-lua. Reading the file under the
+cursor needs neo-tree.nvim.
 
 ==============================================================================
 COMMANDS                                                        *leaf-commands*
 
 :Leaf[!] [file]                                                        *:Leaf*
-        Toggle the Viewer. An open Viewer closes regardless of arguments.
+        Toggle the Viewer. A bare :Leaf closes an open Viewer from
+        anywhere. An explicit [file] always means "show this": a Viewer
+        open on something else is closed and retargeted.
 
-        Without [file] and with a Markdown buffer: preview that buffer.
-        With [file]: preview that file (Placement is Float). Naming the
-        current buffer's file keeps buffer semantics.
+        Source resolution, in order:
+        1. [file] — preview that file. Naming the current buffer's file
+           keeps buffer semantics (unsaved content in Static Mode).
+        2. No [file], Markdown buffer focused — preview that buffer.
+        3. No [file], focus in a neo-tree panel — preview the file under
+           the cursor; a non-Markdown file or a directory errors.
+        4. Nothing inferable — open the Picker.
 
-        Without [file] on a non-Markdown buffer: open the Picker.
+        Placement under the default position = "auto": Split for a buffer
+        source (1/2 above), Tab for a file source (1/3/4). A Tab Viewer
+        holds only the render; closing it wipes the tabpage and jumps back
+        to the previous tab.
 
         Bang flips the configured default Mode: with interactive = false,
         :Leaf! opens leaf's TUI with --watch. Interactive Mode needs the
@@ -41,12 +54,10 @@ COMMANDS                                                        *leaf-commands*
         Inside a Static Viewer: q or <Esc> closes. Inside an Interactive
         Viewer: leaf's own quit key exits; <C-\> force-closes.
 
-:Telescope leaf                                              *leaf-telescope*
-        Picker over Markdown files under the project root with a
-        leaf-rendered preview pane (telescope backend). Selecting an entry
-        opens it in a Viewer (default Mode, Float placement). With fzf-lua
-        installed instead, the Picker uses it automatically; no separate
-        command is needed.
+The Picker has no standalone command: it opens as the |:Leaf| fallback
+when nothing is inferable. It lists Markdown files under the project root
+with a leaf-rendered preview pane; selecting an entry opens it in a Viewer
+(default Mode, Tab placement under "auto").
 
 ==============================================================================
 SETUP                                                              *leaf-setup*
@@ -54,7 +65,7 @@ SETUP                                                              *leaf-setup*
 require("leaf").setup({}) ~
   leaf_path                  string?   leaf binary; nil = $PATH lookup
   interactive                boolean   default Mode                     false
-  position                   string    "auto" | "split" | "float"       "auto"
+  position                   string    "auto"|"split"|"float"|"tab"    "auto"
   theme                      string?   leaf --theme value
   border                     string    Float border                   "rounded"
   width_ratio                number    Float width ratio                  0.7
@@ -66,7 +77,7 @@ require("leaf").setup({}) ~
 ==============================================================================
 HEALTH                                                            *leaf-health*
 
-|:checkhealth| leaf reports the resolved binary and its version, and which
-picker backend (telescope.nvim or fzf-lua) is available.
+|:checkhealth| leaf reports the resolved binary and its version, and
+whether fzf-lua (the Picker) is available.
 
 vim:tw=78:ts=8:ft=help:norl:

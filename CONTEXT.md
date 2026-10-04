@@ -1,7 +1,7 @@
 # leaf.nvim
 
 Neovim glue for the [leaf](https://github.com/RivoLink/leaf) Markdown
-viewer: rendered previews inside Neovim, plus a Telescope picker for
+viewer: rendered previews inside Neovim, plus an fzf-lua picker for
 Markdown discovery.
 
 ## Language
@@ -19,22 +19,32 @@ leaf TUI running live inside the window.
 _Avoid_: style, flavor
 
 **Placement**:
-Where the Viewer appears. **Split**: vertical split right of the source
-buffer. **Float**: centered floating window.
-_Avoid_: layout, position (the config key, not the concept)
+Where the Viewer appears. **Split**: vertical split right of the invoking
+window. **Float**: centered floating window; opt-in only, never the
+default. **Tab**: new tabpage holding only the render; closing the Viewer
+closes the tab. `position = "auto"`: Split for a Buffer Source, Tab for a
+File Source.
+_Avoid_: layout, position (the config key, not the concept), popup
 
 **Source**:
-What gets rendered. Buffer content (possibly unsaved, via temp file) for
-Static Mode on the current buffer; the on-disk file otherwise.
+What gets rendered. **Buffer Source**: the current buffer's content
+(possibly unsaved, via temp file) for Static Mode. **File Source**: an
+on-disk file — given as a `:Leaf` argument, taken from the Explorer node
+under the cursor, or chosen in the Picker.
 _Avoid_: input, target
 
+**Explorer**:
+The neo-tree filesystem panel. When `:Leaf` runs with focus in the
+Explorer, the Markdown file under the cursor becomes the File Source;
+a non-Markdown file or directory under the cursor is an error.
+
 **Picker**:
-The telescope/fzf-lua surface that finds Markdown files under the project
-root, previews them via leaf, and opens the selection in a Viewer.
-_Avoid_: finder, telescope (the dependency, not the surface)
+The fzf-lua surface that finds Markdown files under the project root,
+previews them via leaf, and opens the selection in a Viewer.
+_Avoid_: finder, fzf (the dependency, not the surface)
 
 **Live rendering**:
 The Viewer refreshing after the source file is saved (`:w`). Static Mode
-re-renders via a buffer-local autocmd; Interactive Mode relies on leaf's
-`--watch`.
+re-renders when the source path is written, whether or not it is the
+current buffer; Interactive Mode relies on leaf's `--watch`.
 _Avoid_: hot reload, auto refresh

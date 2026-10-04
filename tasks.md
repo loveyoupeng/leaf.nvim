@@ -91,3 +91,27 @@ mapping snippets, and `:h leaf` vimdoc.
 - [x] Headless smoke: real binary, real buffer, Viewer opens and closes — tests/smoke.lua (also verified inside the full LazyVim profile)
 - [x] README: install spec, options table, mappings; `doc/leaf.txt` vimdoc
 - [x] Stylua clean; committed and pushed to origin/main — c19e27e
+
+## 07: Inference chain and Tab placement — explorer source, retargeting toggle
+
+**Blocked by:** 01–05
+
+**What to build:** `:Leaf` infers its Source from more than the current
+buffer: with focus in a neo-tree filesystem panel, the node under the
+cursor becomes a File Source (Markdown extension); a non-Markdown file or
+directory is a typed error, and only when nothing is inferable does the
+Picker open. File Sources render in a new **Tab** placement (render-only
+tabpage; closing the Viewer wipes the tab and returns focus) instead of a
+Float, which is now opt-in via `position = "float"`. `:Leaf <path>` with a
+Viewer open retargets instead of merely closing. Static live-reload keys
+off the source path (`BufWritePost` pattern), not the owning buffer.
+
+- [x] neo-tree probe resolves the cursor node; resolution precedence arg → markdown buffer → explorer node → picker — resolve_spec explorer inference block
+- [x] Non-markdown/directory node → `not_markdown` error naming the path — resolve_spec + real-profile e2e probe
+- [x] `auto` places File Sources in a new render-only Tab; `"tab"` accepted by config validation; Float opt-in — resolve_spec tab cases + config_spec
+- [x] Closing a Tab Viewer wipes its tabpage and returns focus to the invoking tab — smoke steps 4/4c
+- [x] `:Leaf <path>` while open retargets (close + reopen, no tab leak) — smoke step 4b
+- [x] Static re-render fires when any buffer writes the source path — smoke step 4a
+- [x] Verified against the real LazyVim profile with real neo-tree (headless e2e driver): probe, tab render, cross-tab toggle close, typed error
+- [x] Picker cut down to fzf-lua only; the never-installable telescope backend and `:Telescope leaf` extension removed — picker.lua, health.lua, `lua/telescope/` deleted, docs updated
+- [x] Docs: CONTEXT.md (Explorer term, Tab placement), SPEC.md, README.md, doc/leaf.txt

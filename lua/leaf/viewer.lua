@@ -18,6 +18,7 @@ local M = {}
 ---@field tmpfile? string Temp file holding unsaved buffer content
 ---@field augroup integer Autocmds owned by this Viewer
 ---@field wipe_au? integer Close-on-wipe autocmd for the current frame buffer
+---@field tabpage? integer Owning tabpage — set for Tab placement only
 
 ---@type leaf.ViewerState?
 local state
@@ -52,11 +53,26 @@ function M.close()
   if not state then
     return
   end
-  local win, buf = state.win, state.buf
+  local win, buf, tabpage = state.win, state.buf, state.tabpage
   stop_job()
   cleanup_autocmds()
   cleanup_tmpfile()
-  if vim.api.nvim_win_is_valid(win) then
+  if tabpage and vim.api.nvim_tabpage_is_valid(tabpage) then
+    -- Tab placement: closing the Viewer closes its tabpage. Jump back to
+    -- the last-visited tab, but only when focus is still inside the
+    -- Viewer tab — from elsewhere the user's focus must not move.
+    local back ---@type integer?
+    if vim.api.nvim_get_current_tabpage() == tabpage then
+      local nr = vim.fn.tabpagenr("#")
+      if nr > 0 then
+        back = nr
+      end
+    end
+    pcall(vim.cmd, "tabclose " .. vim.api.nvim_tabpage_get_number(tabpage))
+    if back then
+      pcall(vim.cmd, "tabnext " .. math.min(back, vim.fn.tabpagenr("$")))
+    end
+  elseif vim.api.nvim_win_is_valid(win) then
     pcall(vim.api.nvim_win_close, win, true)
   end
   if vim.api.nvim_buf_is_valid(buf) then
@@ -86,7 +102,7 @@ local function float_opts()
   }
 end
 
----@param placement "split"|"float"
+---@param placement "split"|"float"|"tab"
 ---@return integer win
 local function open_window(placement)
   if placement == "split" then
@@ -95,6 +111,15 @@ local function open_window(placement)
     vim.cmd("vsplit")
     local win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_width(win, math.ceil(source_width * config.options.split_ratio))
+    return win
+  end
+  if placement == "tab" then
+    -- Like |:edit| into a fresh tabpage: one normal window, render only.
+    vim.cmd("tabnew")
+    local win = vim.api.nvim_get_current_win()
+    -- tabnew's empty placeholder is swapped out by fresh_frame(); don't
+    -- let it linger as a hidden buffer.
+    vim.bo[vim.api.nvim_win_get_buf(win)].bufhidden = "wipe"
     return win
   end
   local buf = vim.api.nvim_create_buf(false, true)
@@ -202,10 +227,13 @@ local function setup_live_reload(request)
       vim.schedule(render_static)
     end,
   }
-  if request.source.kind == "buffer" then
-    autocmd_opts.buffer = request.source.bufnr
-  else
+  if request.source.path then
+    -- Path pattern, not buffer-local: any buffer writing this file (even
+    -- one loaded later, e.g. :e on a path the Explorer rendered) retriggers
+    -- the render. Unnamed buffer sources have no path — buffer-local only.
     autocmd_opts.pattern = vim.fn.fnamemodify(request.source.path, ":p")
+  else
+    autocmd_opts.buffer = request.source.bufnr
   end
   vim.api.nvim_create_autocmd("BufWritePost", autocmd_opts)
 
@@ -258,6 +286,7 @@ function M.open(request)
     buf = -1, -- set by fresh_frame()
     request = request,
     augroup = augroup,
+    tabpage = request.placement == "tab" and vim.api.nvim_get_current_tabpage() or nil,
   }
   -- User-closed window unloads the whole Viewer (job, autocmds, temp file).
   vim.api.nvim_create_autocmd("WinClosed", {

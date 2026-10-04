@@ -89,18 +89,61 @@ if leaf.is_open() then
   fail("viewer did not close on toggle")
 end
 
--- 4. Explicit path to another file → float placement.
-vim.fn.writefile({ "# Second File" }, vim.fn.tempname() .. ".md")
+-- 4. Explicit path to another file → Tab placement: render-only tabpage.
 local other = vim.fn.tempname() .. ".md"
 vim.fn.writefile({ "# Second File" }, other)
+local tabs_before = #vim.api.nvim_list_tabpages()
+local main_tab = vim.api.nvim_get_current_tabpage()
 leaf.toggle({ fargs = { other } })
 if not leaf.is_open() then
   fail("viewer did not open for explicit path")
 end
-if not viewer_has("Second File") then
-  fail("float render never showed 'Second File'")
+if #vim.api.nvim_list_tabpages() ~= tabs_before + 1 then
+  fail("expected a new tabpage for an explicit path, got " .. #vim.api.nvim_list_tabpages())
 end
+if not viewer_has("Second File") then
+  fail("tab render never showed 'Second File'")
+end
+
+-- 4a. Live re-render when ANOTHER buffer writes the rendered file
+-- (BufWritePost pattern on the path, not buffer-local).
+local viewer_tab = vim.api.nvim_get_current_tabpage()
+vim.cmd("tabprevious")
+vim.cmd("edit " .. vim.fn.fnameescape(other))
+vim.api.nvim_buf_set_lines(0, 0, -1, false, { "# Rewritten Elsewhere" })
+vim.cmd("write")
+vim.api.nvim_set_current_tabpage(viewer_tab)
+if not viewer_has("Rewritten Elsewhere") then
+  fail("file-source viewer did not follow an external write; lines: " .. vim.inspect(viewer_lines()))
+end
+
+-- 4b. Toggle with an explicit arg retargets the open Viewer instead of
+-- closing it.
+local third = vim.fn.tempname() .. ".md"
+vim.fn.writefile({ "# Third File" }, third)
+leaf.toggle({ fargs = { third } })
+if not leaf.is_open() then
+  fail("retargeted viewer is not open")
+end
+if #vim.api.nvim_list_tabpages() ~= tabs_before + 1 then
+  fail("retarget leaked a tabpage: " .. #vim.api.nvim_list_tabpages())
+end
+if not viewer_has("Third File") then
+  fail("retarget never showed 'Third File'")
+end
+
+-- 4c. Closing the Tab Viewer closes its tabpage and returns focus.
 leaf.close()
+if leaf.is_open() then
+  fail("close did not close the tab viewer")
+end
+if #vim.api.nvim_list_tabpages() ~= tabs_before then
+  fail("tabpage leaked after close: " .. #vim.api.nvim_list_tabpages())
+end
+if vim.api.nvim_get_current_tabpage() ~= main_tab then
+  fail("closing the tab viewer did not return focus to the invoking tab")
+end
+vim.fn.delete(third)
 
 -- 6. Interactive Mode: opens on the saved file, closes cleanly via API.
 leaf.toggle({ fargs = {}, bang = true })

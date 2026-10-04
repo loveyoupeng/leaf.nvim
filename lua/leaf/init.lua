@@ -16,12 +16,14 @@ end
 ---@return leaf.Context
 local function context(opts)
   opts = opts or {}
+  local bufnr = vim.api.nvim_get_current_buf()
   return {
     arg = opts.fargs and opts.fargs[1] or nil,
     bang = opts.bang == true,
-    bufnr = vim.api.nvim_get_current_buf(),
+    bufnr = bufnr,
     ft = vim.bo.filetype,
     bufname = vim.api.nvim_buf_get_name(0),
+    explorer = require("leaf.explorer").node(bufnr),
   }
 end
 
@@ -36,18 +38,23 @@ local function dispatch(decision)
   end
 end
 
----:Leaf entry point. Toggle semantics: an open Viewer closes regardless of args.
+---:Leaf entry point. Toggle semantics: bare :Leaf closes an open Viewer.
+---An explicit file arg always means "show this": a Viewer open on something
+---else is closed and retargeted.
 ---@param opts { fargs?: string[], bang?: boolean }?
 function M.toggle(opts)
+  local ctx = context(opts)
   if viewer.is_open() then
     viewer.close()
-    return
+    if not ctx.arg or ctx.arg == "" then
+      return
+    end
   end
-  dispatch(resolve.decide(context(opts)))
+  dispatch(resolve.decide(ctx))
 end
 
 ---Open the Viewer for an explicit path (Picker launch path).
----Always a Float in the configured default Mode: no source window exists.
+---File Source: placement follows `position`, Tab under "auto".
 ---@param path string
 function M.open_path(path)
   if viewer.is_open() then

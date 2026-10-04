@@ -1,22 +1,10 @@
 ---Picker: Markdown under the project root with a leaf-rendered preview pane;
----selection opens the Viewer. Backend is whichever picker plugin the user
----actually has: telescope if available, fzf-lua otherwise. Both are loaded
----lazily, here only — the Viewer itself needs neither.
+---selection opens the Viewer. fzf-lua only, loaded lazily here — the Viewer
+---itself needs no picker plugin.
 
 local config = require("leaf.config")
 
 local M = {}
-
----@return "telescope"|"fzf"?
-local function backend()
-  if pcall(require, "telescope") then
-    return "telescope"
-  end
-  if pcall(require, "fzf-lua") then
-    return "fzf"
-  end
-  return nil
-end
 
 ---Project root: LazyVim's root when available, else cwd.
 ---@return string
@@ -56,42 +44,6 @@ local function checked_binary()
 end
 
 ---@param binary string
-local function telescope_open(binary)
-  local pickers = require("telescope.pickers")
-  local finders = require("telescope.finders")
-  local previewers = require("telescope.previewers")
-  local actions = require("telescope.actions")
-  local action_state = require("telescope.actions.state")
-  local conf = require("telescope.config").values
-
-  local cwd = root()
-  pickers
-    .new({}, {
-      prompt_title = "Markdown files (leaf)",
-      cwd = cwd,
-      finder = finders.new_oneshot_job(find_cmd(cwd), { cwd = cwd }),
-      sorter = conf.file_sorter({}),
-      previewer = previewers.new_termopen_previewer({
-        title = "leaf",
-        get_command = function(entry)
-          return { binary, "--inline", "ansi", entry.path }
-        end,
-      }),
-      attach_mappings = function(prompt_bufnr)
-        actions.select_default:replace(function()
-          local entry = action_state.get_selected_entry()
-          actions.close(prompt_bufnr)
-          if entry and entry.path then
-            require("leaf").open_path(entry.path)
-          end
-        end)
-        return true
-      end,
-    })
-    :find()
-end
-
----@param binary string
 local function fzf_open(binary)
   local fzf = require("fzf-lua")
   local cwd = root()
@@ -110,11 +62,9 @@ local function fzf_open(binary)
 end
 
 function M.open()
-  local which = backend()
-  if not which then
+  if not pcall(require, "fzf-lua") then
     return vim.notify(
-      "leaf.nvim: the Picker needs nvim-telescope/telescope.nvim or ibhagwan/fzf-lua"
-        .. " (or pass a file instead: :Leaf path.md)",
+      "leaf.nvim: the Picker needs ibhagwan/fzf-lua" .. " (or pass a file instead: :Leaf path.md)",
       vim.log.levels.ERROR
     )
   end
@@ -122,11 +72,7 @@ function M.open()
   if not binary then
     return
   end
-  if which == "telescope" then
-    telescope_open(binary)
-  else
-    fzf_open(binary)
-  end
+  fzf_open(binary)
 end
 
 return M

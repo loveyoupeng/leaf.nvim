@@ -25,6 +25,11 @@ describe("leaf.config", function()
     assert.are.same("auto", config.options.position)
   end)
 
+  it("accepts tab as a valid position", function()
+    config.setup({ position = "tab" })
+    assert.are.same("tab", config.options.position)
+  end)
+
   describe("executable resolution", function()
     it("returns nil for an unrunnable explicit leaf_path", function()
       config.setup({ leaf_path = "/nonexistent/leaf" })

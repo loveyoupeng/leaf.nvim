@@ -11,6 +11,7 @@ local M = {}
 ---@field bufnr integer Current buffer
 ---@field ft string Current buffer filetype
 ---@field bufname string Current buffer name ("" when unnamed)
+---@field explorer? { path: string, is_dir: boolean } Node under the cursor when focus is in an Explorer
 
 ---@class leaf.Source
 ---@field kind "buffer"|"file" buffer = render current buffer content; file = render path on disk
@@ -25,8 +26,8 @@ local M = {}
 ---@class leaf.Decision
 ---@field kind "viewer"|"picker"|"error"
 ---@field request? leaf.Request
----@field err? "missing_binary"|"not_a_file"|"need_saved_file"
----@field err_path? string Offending path for not_a_file
+---@field err? "missing_binary"|"not_a_file"|"not_markdown"|"need_saved_file"
+---@field err_path? string Offending path for not_a_file / not_markdown
 
 local err = setmetatable({}, {
   __call = function(_, code, path)
@@ -73,15 +74,25 @@ function M.decide(ctx)
       source = { kind = "file", path = path }
       from_current = false
     end
-  else
-    if not config.is_markdown_ft(ctx.ft) then
-      return { kind = "picker" }
-    end
+  elseif config.is_markdown_ft(ctx.ft) then
     source = { kind = "buffer", bufnr = ctx.bufnr }
     if ctx.bufname ~= "" then
       source.path = ctx.bufname
     end
     from_current = true
+  elseif ctx.explorer then
+    if ctx.explorer.is_dir or not config.is_markdown_ext(ctx.explorer.path) then
+      return err("not_markdown", ctx.explorer.path)
+    end
+    local path = vim.fn.fnamemodify(ctx.explorer.path, ":p")
+    if vim.fn.filereadable(path) == 0 then
+      return err("not_a_file", ctx.explorer.path)
+    end
+    source = { kind = "file", path = path }
+    from_current = false
+  else
+    -- Nothing inferable from the invocation or focus: ask the user.
+    return { kind = "picker" }
   end
 
   if mode == "interactive" and not source.path then
@@ -92,7 +103,7 @@ function M.decide(ctx)
   local position = config.options.position
   local placement = position
   if position == "auto" then
-    placement = from_current and "split" or "float"
+    placement = from_current and "split" or "tab"
   end
 
   return {
@@ -114,6 +125,8 @@ function M.error_message(decision)
       .. " or set `leaf_path` in setup()."
   elseif decision.err == "not_a_file" then
     return string.format("leaf.nvim: no readable file at %s", decision.err_path)
+  elseif decision.err == "not_markdown" then
+    return string.format("leaf.nvim: not a Markdown file: %s", decision.err_path)
   elseif decision.err == "need_saved_file" then
     return "leaf.nvim: interactive mode needs a saved file; write the buffer or use :Leaf (static)."
   end

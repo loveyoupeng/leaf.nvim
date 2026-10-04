@@ -67,11 +67,16 @@ describe("leaf.resolve", function()
       assert.are.same("split", resolve.decide(ctx()).request.placement)
     end)
 
-    it("floats for an explicit path to another file", function()
+    it("opens a new tab for an explicit path to another file", function()
       local decision = resolve.decide(ctx({ arg = other_file }))
-      assert.are.same("float", decision.request.placement)
+      assert.are.same("tab", decision.request.placement)
       assert.are.same("file", decision.request.source.kind)
       assert.are.same(other_file, decision.request.source.path)
+    end)
+
+    it("respects a forced tab position", function()
+      config.setup({ position = "tab" })
+      assert.are.same("tab", resolve.decide(ctx()).request.placement)
     end)
 
     it("keeps split + buffer source when the explicit path IS the current buffer", function()
@@ -116,6 +121,64 @@ describe("leaf.resolve", function()
   describe("picker fallback", function()
     it("non-markdown buffer without args yields the picker", function()
       assert.are.same("picker", resolve.decide(ctx({ ft = "lua" })).kind)
+    end)
+  end)
+
+  describe("explorer inference", function()
+    local function explorer_ctx(node)
+      return ctx({ ft = "neo-tree", bufname = "", explorer = node })
+    end
+
+    it("renders the markdown node under the cursor in a tab", function()
+      local decision = resolve.decide(explorer_ctx({ path = other_file, is_dir = false }))
+      assert.are.same("viewer", decision.kind)
+      assert.are.same("file", decision.request.source.kind)
+      assert.are.same(other_file, decision.request.source.path)
+      assert.are.same("tab", decision.request.placement)
+    end)
+
+    it("errors on a directory node", function()
+      local decision = resolve.decide(explorer_ctx({ path = "/tmp", is_dir = true }))
+      assert.are.same("error", decision.kind)
+      assert.are.same("not_markdown", decision.err)
+      assert.truthy(resolve.error_message(decision):find("not a Markdown file", 1, true))
+    end)
+
+    it("errors on a non-markdown file node", function()
+      local decision = resolve.decide(explorer_ctx({ path = "/tmp/init.lua", is_dir = false }))
+      assert.are.same("error", decision.kind)
+      assert.are.same("not_markdown", decision.err)
+    end)
+
+    it("errors when the node file is unreadable", function()
+      local decision = resolve.decide(explorer_ctx({ path = "/nonexistent/ghost.md", is_dir = false }))
+      assert.are.same("error", decision.kind)
+      assert.are.same("not_a_file", decision.err)
+    end)
+
+    it("renders an uppercase-extension markdown node", function()
+      local upper = vim.fn.tempname() .. ".MD"
+      vim.fn.writefile({ "# upper" }, upper)
+      local decision = resolve.decide(explorer_ctx({ path = upper, is_dir = false }))
+      assert.are.same("viewer", decision.kind)
+      vim.fn.delete(upper)
+    end)
+
+    it("prefers the focused markdown buffer over the explorer node", function()
+      local decision = resolve.decide(ctx({ explorer = { path = other_file, is_dir = false } }))
+      assert.are.same("buffer", decision.request.source.kind)
+      assert.are.same("split", decision.request.placement)
+    end)
+
+    it("prefers an explicit arg over the explorer node", function()
+      local decision =
+        resolve.decide(ctx({ arg = other_file, ft = "neo-tree", explorer = { path = "/tmp", is_dir = true } }))
+      assert.are.same("file", decision.request.source.kind)
+      assert.are.same(other_file, decision.request.source.path)
+    end)
+
+    it("falls through to the picker when no node was resolved", function()
+      assert.are.same("picker", resolve.decide(ctx({ ft = "neo-tree", bufname = "" })).kind)
     end)
   end)
 

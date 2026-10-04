@@ -21,13 +21,11 @@ function M.check()
     )
   end
 
-  local has_telescope = pcall(require, "telescope")
-  local has_fzf = pcall(require, "fzf-lua")
-  if has_telescope or has_fzf then
-    vim.health.ok("picker backend: " .. (has_telescope and "telescope.nvim" or "fzf-lua") .. " — Picker enabled")
+  if pcall(require, "fzf-lua") then
+    vim.health.ok("picker plugin: fzf-lua — Picker enabled")
   else
-    vim.health.warn("no picker backend found: Picker disabled", {
-      "Install nvim-telescope/telescope.nvim or ibhagwan/fzf-lua for the Picker and the non-Markdown :Leaf fallback",
+    vim.health.warn("fzf-lua not found: Picker disabled", {
+      "Install ibhagwan/fzf-lua for the Picker and the :Leaf fallback when nothing is inferable",
     })
   end
 end

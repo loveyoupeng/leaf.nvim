@@ -2,16 +2,17 @@
 
 Markdown preview in Neovim powered by the
 [leaf](https://github.com/RivoLink/leaf) CLI — static render or live
-interactive TUI, in a split or a float, with a fuzzy Markdown picker.
-glow.nvim-style glue, in the spirit of LazyVim.
+interactive TUI, in a split, a float, or a new tab, with a fuzzy Markdown
+picker. glow.nvim-style glue, in the spirit of LazyVim.
 
 ## Requirements
 
 - Neovim ≥ 0.10
 - the `leaf` binary on `$PATH` (install from
   <https://github.com/RivoLink/leaf>) — or point `leaf_path` at it
-- Optional picker: `nvim-telescope/telescope.nvim` **or**
-  `ibhagwan/fzf-lua` (whichever you already use; found automatically)
+- Optional picker: `ibhagwan/fzf-lua`
+- Optional explorer: `nvim-neo-tree/neo-tree.nvim` (`:Leaf` reads the file
+  under its cursor)
 
 ## Install (lazy.nvim)
 
@@ -26,28 +27,18 @@ glow.nvim-style glue, in the spirit of LazyVim.
 }
 ```
 
-With telescope (use it instead of fzf-lua when both exist):
-
-```lua
-{
-  "loveyoupeng/leaf.nvim",
-  dependencies = { "nvim-telescope/telescope.nvim" },
-  opts = {},
-  config = function(_, opts)
-    require("leaf").setup(opts)
-    require("telescope").load_extension("leaf") -- adds :Telescope leaf
-  end,
-}
-```
-
 ## Usage
 
-- `:Leaf` — preview the current Markdown buffer (toggle: run again to close)
-- `:Leaf path/to/file.md` — preview another file (always a float)
+- `:Leaf` — preview the current Markdown buffer (toggle: run again, from
+  anywhere, to close)
+- `:Leaf path/to/file.md` — render another file in a **new tab**; explicit
+  path while a Viewer is open retargets it instead of closing
 - `:Leaf!` — bang flips the mode: leaf's interactive TUI with `--watch`,
   live-reloading whenever you `:w` in Neovim
-- `:Leaf` on a non-Markdown buffer — opens the Markdown **Picker**
-  (telescope extension or fzf-lua, auto-detected)
+- `:Leaf` with the cursor on a Markdown file in **neo-tree** — render that
+  file in a new tab; a non-Markdown file or directory errors
+- `:Leaf` anywhere else (non-Markdown buffer, nothing to infer) — opens the
+  Markdown **Picker** (fzf-lua)
 - Static viewer keys: `q`/`<Esc>` close. Interactive: use leaf's own quit;
   `<C-\>` force-closes.
 
@@ -59,10 +50,11 @@ instead — save first, then live reload follows every `:w`.
 
 ### Placement
 
-`position = "auto"` (default): editing the Markdown file you're previewing
-opens a **vertical split to its right**; any other origin (explicit path,
-picker, non-Markdown buffer) opens a **centered float**. Force either with
-`"split"` / `"float"`.
+`position = "auto"` (default): previewing the Markdown buffer you're
+editing opens a **vertical split to its right**; a file source (explicit
+path, explorer node, picker selection) renders fullscreen in a **new tab**
+that closes back to where you came from. A float is opt-in only. Force any
+placement with `"split"` / `"float"` / `"tab"`.
 
 ## Options
 
@@ -70,7 +62,7 @@ picker, non-Markdown buffer) opens a **centered float**. Force either with
 require("leaf").setup({
   leaf_path = nil,        -- leaf binary; nil = search $PATH
   interactive = false,    -- default mode; bang on :Leaf flips it
-  position = "auto",      -- "auto" | "split" | "float"
+  position = "auto",      -- "auto" | "split" | "float" | "tab"
   theme = nil,            -- leaf --theme
   border = "rounded",     -- float border
   width_ratio = 0.7,      -- float width

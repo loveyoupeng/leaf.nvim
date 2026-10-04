@@ -2,8 +2,8 @@
 
 A LazyVim-first Neovim plugin that renders Markdown with the
 [leaf](https://github.com/RivoLink/leaf) CLI, in the spirit of
-[ellisonleao/glow.nvim](https://github.com/ellisonleao/glow.nvim), plus a
-Telescope picker for finding Markdown files.
+[ellisonleao/glow.nvim](https://github.com/ellisonleao/glow.nvim), plus an
+fzf-lua picker for finding Markdown files.
 
 ## Problem Statement
 
@@ -18,17 +18,19 @@ offers both a high-quality one-shot render (`--inline`) and a live TUI
 
 A `:Leaf` command (with `<leader>cp` bound in the user's own config,
 mirroring LazyVim's markdown extra) that opens a **Viewer** — rendered
-output beside or floating over the source buffer. Editing stays in the
+output beside the source buffer or in its own tabpage. Editing stays in the
 normal Neovim buffer; the Viewer refreshes whenever the file is saved.
-Telescope and fzf-lua **Picker** backends provide fuzzy Markdown discovery
-with leaf-rendered previews, and the Picker doubles as the fallback when
-`:Leaf` is invoked from a non-Markdown buffer.
+An fzf-lua **Picker** provides fuzzy Markdown discovery with leaf-rendered
+previews, and doubles as the fallback when `:Leaf` can infer nothing from
+its argument or the editor focus — a focused neo-tree panel supplies the
+file under its cursor instead.
 
 > Note (recorded at implementation time): the original conversation pinned
 > the Picker on Telescope, but the user's actual LazyVim environment runs
 > fzf-lua (`editor.telescope` in `lazyvim.json` is a stale extra — telescope
-> is absent from `lazy-lock.json`). The Picker therefore supports both,
-> preferring Telescope when present.
+> is absent from `lazy-lock.json`). A telescope backend existed briefly but
+> could never be exercised in the target environment, so it was cut; the
+> Picker is fzf-lua-only.
 
 ## User Stories
 
@@ -46,23 +48,26 @@ with leaf-rendered previews, and the Picker doubles as the fallback when
 6. As a Markdown author on a brand-new unsaved buffer, I want `:Leaf!` to
    tell me to save the file first, so that I understand interactive mode
    needs an on-disk file.
-7. As a Markdown author, I want `:Leaf path/to/file.md` to preview a file
-   other than the current buffer, so I can review docs without opening them.
-8. As a Markdown author, I want `:Leaf` again to close the Viewer (toggle
-   semantics), matching how `MarkdownPreviewToggle` behaved.
+7. As a Markdown author, I want `:Leaf path/to/file.md` to render a file
+   other than the current buffer in a new tabpage, so I get a fullscreen
+   render that drops me back where I was when closed.
+8. As a Markdown author, I want bare `:Leaf` to close the Viewer from
+   anywhere (toggle semantics, matching `MarkdownPreviewToggle`), while
+   `:Leaf path.md` with a Viewer open retargets it to that file.
 9. As a Markdown author, I want `q`/`<Esc>` to close the static Viewer and
    leaf's own quit key to close the interactive one, so the UI is never
    trapping.
-10. As a user on a non-Markdown buffer, I want `:Leaf` to open a file Picker
-    so that I can choose a Markdown file to view.
-11. As a user browsing Markdown files, I want a picker (Telescope or
-    fzf-lua, whichever I use) over the project root with a leaf-rendered
-    preview pane, so that I can see content before opening.
+10. As a user on a non-Markdown buffer with nothing else to infer, I want
+    `:Leaf` to open a file Picker so that I can choose a Markdown file to
+    view.
+11. As a user browsing Markdown files, I want a picker (fzf-lua) over the
+    project root with a leaf-rendered preview pane, so that I can see
+    content before opening.
 12. As a user selecting a file in the Picker, I want it to open in a Viewer
     using my configured mode, so the picker is a launcher, not a dead end.
-13. As a user with neither picker plugin installed, I want the Viewer to
-    keep working and the Picker to explain what's missing, so the plugin
-    degrades gracefully.
+13. As a user without fzf-lua installed, I want the Viewer to keep working
+    and the Picker to explain what's missing, so the plugin degrades
+    gracefully.
 14. As a user without the leaf binary, I want a notification naming the
     binary and linking its install page, and a `:checkhealth leaf` section,
     so I can fix my environment quickly.
@@ -74,52 +79,73 @@ with leaf-rendered previews, and the Picker doubles as the fallback when
 17. As a LazyVim user, I want to install via a normal lazy.nvim spec from
     GitHub, with `opts = {}` for configuration, so the plugin follows
     ecosystem conventions.
+18. As a user browsing files in neo-tree, I want `:Leaf` with the cursor on
+    a Markdown file to render that file in a new tab, and on anything else
+    to say why not, so the explorer is a first-class launch surface.
 
 ## Implementation Decisions
 
 - **Domain model** (see `CONTEXT.md`): *Viewer* on two axes — **Mode**
-  (Static | Interactive) × **Placement** (Split | Float); *Picker* is the
-  Telescope surface.
+  (Static | Interactive) × **Placement** (Split | Float | Tab); *Picker* is
+  the fzf-lua discovery surface; *Explorer* is the neo-tree panel whose
+  cursor node can become a File Source.
 - **Static Mode**: spawn `leaf --inline ansi:<width> <path>`, pipe stdout
   into `nvim_open_term` in a scratch buffer (glow.nvim's mechanism,
   verified against its source). Read-only; `q`/`<Esc>` close.
 - **Interactive Mode**: `termopen("leaf --watch <path>")` in the window's
   buffer. Keys pass to the TUI; leaf's quit ends the job and the plugin
   wipes the window. A `<C-\>` terminal-map force-closes.
-- **Placement rule** (`position = "auto"`, default): Split when the focused
-  buffer is the Markdown file being rendered (source left, render right,
-  `split_ratio = 0.5`); Float (centered, `width_ratio`/`height_ratio` 0.7,
-  rounded border) otherwise — explicit-path invocation, picker selection, or
-  non-Markdown focus all land on Float.
+- **Placement rule** (`position = "auto"`, default): a Buffer Source
+  renders in a Split right of the invoking window (`split_ratio = 0.5`); a
+  File Source (explicit path, explorer node, picker selection) renders in
+  a new Tab holding only the render — closing the Viewer wipes the tabpage
+  and returns focus to the previously active tab. Float (centered,
+  `width_ratio`/`height_ratio` 0.7, rounded border) is opt-in only:
+  `position = "float"`, and `"split"`/`"tab"` force their placement for
+  any source. Rationale: a file render has no source window to sit beside,
+  and a transient fullscreen render behaves like opening the file itself
+  in a new tab (`:tabedit`), which is the muscle memory explorer users
+  already have.
 - **Source semantics**: Static renders *buffer content* when targeting the
   current buffer (dump lines to a temp `.md`; unsaved edits included) and
-  the *file on disk* for explicit paths. Interactive always uses the on-disk
+  the *file on disk* for file sources. Interactive always uses the on-disk
   file with `--watch`; a never-saved buffer errors in Interactive Mode.
-  Both refresh on `:w` (autocmd re-render vs. leaf's own watcher).
+  Both refresh on `:w`: Static re-renders via a `BufWritePost` pattern on
+  the source's absolute path — any buffer writing that file retriggers the
+  render, even one loaded after the Viewer opened (buffer-local only for
+  never-saved buffers); Interactive relies on leaf's own watcher.
   Rationale: ADR-0001.
-- **`:Leaf[!] [file?]`** with toggle semantics; bang flips the configured
-  default Mode. No arg on a non-Markdown buffer → open the Picker (error if
-  Telescope absent).
+- **`:Leaf[!] [file?]`** — bang flips the configured default Mode. Source
+  precedence: explicit arg → focused Markdown buffer → neo-tree node under
+  the cursor (non-Markdown file or directory → `not_markdown` error) →
+  Picker fallback (error if fzf-lua is absent).
+  Bare `:Leaf` toggles an open Viewer closed from anywhere; an explicit
+  arg retargets an open Viewer instead of closing it.
 - **Module seams** (new, deliberately few):
   - *resolve*: pure function from invocation context (args, bang, buffer
-    filetype/dirty/on-disk state, config) to a Viewer request
-    `{ mode, placement, source }` or a typed failure (`missing_binary`,
-    `need_saved_file`, `need_telescope`, `not_a_file`). THE test seam.
+    filetype/dirty/on-disk state, explorer node, config) to a Viewer
+    request `{ mode, placement, source }` or a typed failure
+    (`missing_binary`, `need_saved_file`, `not_a_file`, `not_markdown`).
+    THE test seam.
+  - *explorer*: neo-tree probe — resolves the node under the cursor in a
+    focused filesystem panel to `{ path, is_dir }` for the resolve seam;
+    `nil` when focus is elsewhere, so resolve stays pure.
   - *config*: defaults + `setup()` merge + validation; `executable()`
     resolution of `leaf_path` (option → `$PATH`).
-  - *viewer*: window/job lifecycle for Static and Interactive across both
-    placements; owns the live-reload autocmd.
+  - *viewer*: window/job lifecycle for Static and Interactive across all
+    three placements (including tabpage create/teardown with focus return);
+    owns the live-reload autocmd.
   - *picker*: file discovery over the project root (`LazyVim.root()` with
     cwd fallback; Markdown extension filter; `leaf --inline` preview pane;
-    selection opens the Viewer). Two backends — Telescope extension
-    (`:Telescope leaf`) and fzf-lua — chosen by availability at call time.
-  - *health*: `:checkhealth leaf` — binary presence/version, picker backend
+    selection opens the Viewer). Single backend: fzf-lua, probed lazily at
+    open time.
+  - *health*: `:checkhealth leaf` — binary presence/version, picker plugin
     availability.
 - **Configuration surface**: `leaf_path`, `interactive = false`,
-  `position = "auto"`, `theme`, `border = "rounded"`, `width_ratio`,
-  `height_ratio`, `split_ratio = 0.5`.
-- **Dependencies**: zero hard plugin dependencies. Telescope/fzf-lua are
-  `pcall`-ed at Picker entry points; the user declares whichever they
+  `position = "auto" | "split" | "float" | "tab"`, `theme`,
+  `border = "rounded"`, `width_ratio`, `height_ratio`, `split_ratio = 0.5`.
+- **Dependencies**: zero hard plugin dependencies. fzf-lua and neo-tree
+  are `pcall`-ed at their entry points; the user declares whichever they
   actually use.
 - **Distribution**: standard lazy.nvim plugin layout, Neovim ≥ 0.10,
   LazyVim-first (no Vim support), Apache-2.0 license kept from repo init.
