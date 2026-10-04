@@ -29,8 +29,9 @@ fuzzy Markdown picker. glow.nvim-style glue, in the spirit of LazyVim.
 
 ## Usage
 
-- `:Leaf` — preview the current Markdown buffer (toggle: run again, from
-  anywhere, to close)
+- `:Leaf` — preview the current Markdown buffer; run again to close the
+  render in the focused window (or the render showing the current file).
+  Multiple renders coexist; closing one never touches the others.
 - `:Leaf path/to/file.md` — render another file **in the same window** like
   a normal `:edit`; your layout doesn't move, and closing brings your
   buffer back. Explicit path while a Viewer is open retargets it.

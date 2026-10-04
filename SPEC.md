@@ -140,9 +140,10 @@ file under its cursor instead.
 - **`:Leaf[!] [file?]`** — bang flips the configured default Mode. Source
   precedence: explicit arg → focused Markdown buffer → neo-tree node under
   the cursor (non-Markdown file or directory → `not_markdown` error) →
-  Picker fallback (error if fzf-lua is absent).
-  Bare `:Leaf` toggles an open Viewer closed from anywhere; an explicit
-  arg retargets an open Viewer instead of closing it.
+  Picker fallback (error if fzf-lua is absent). Viewers are per-window and
+  coexist: bare `:Leaf` closes the focused window's Viewer — or the Viewer
+  showing the focused buffer, the classic source-toggle — never others; an
+  explicit arg replaces only the focused window's Viewer.
 - **Module seams** (new, deliberately few):
   - *resolve*: pure function from invocation context (args, bang, buffer
     filetype/dirty/on-disk state, explorer node, config) to a Viewer

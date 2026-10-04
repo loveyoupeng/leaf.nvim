@@ -37,9 +37,10 @@ cursor needs neo-tree.nvim.
 COMMANDS                                                        *leaf-commands*
 
 :Leaf[!] [file]                                                        *:Leaf*
-        Toggle the Viewer. A bare :Leaf closes an open Viewer from
-        anywhere. An explicit [file] always means "show this": a Viewer
-        open on something else is closed and retargeted.
+        Toggle the Viewer. Viewers are per-window and coexist. A bare
+        :Leaf closes the focused window's Viewer, or the Viewer showing
+        the focused buffer; others stay open. An explicit [file] always
+        means "show this": it replaces only the focused window's Viewer.
 
         Source resolution, in order:
         1. [file] — preview that file. Naming the current buffer's file

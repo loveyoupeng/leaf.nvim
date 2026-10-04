@@ -234,6 +234,51 @@ end
 vim.cmd("bwipeout! " .. vim.fn.fnameescape(fourth))
 vim.fn.delete(fourth)
 
+-- 4f. Multiple Viewers coexist; closing affects only the focused one.
+local function leaf_windows()
+  local n = 0
+  for _, w in ipairs(vim.api.nvim_list_wins()) do
+    if vim.bo[vim.api.nvim_win_get_buf(w)].filetype == "leaf" then
+      n = n + 1
+    end
+  end
+  return n
+end
+leaf.toggle({ fargs = { other } })
+if not vim.wait(4000, function()
+  return leaf.is_open()
+end, 50) then
+  fail("first viewer did not open for coexistence test")
+end
+vim.cmd("vsplit")
+local second_win = vim.api.nvim_get_current_win()
+-- the vsplit briefly duplicates the frame; move this window to the source
+vim.cmd("buffer " .. host_buf)
+local fifth = vim.fn.tempname() .. ".md"
+vim.fn.writefile({ "# Fifth Wheel" }, fifth)
+leaf.toggle({ fargs = { fifth } })
+if not vim.wait(4000, function()
+  return leaf_windows() == 2
+end, 50) then
+  fail("expected two concurrent viewers, got " .. leaf_windows())
+end
+leaf.close() -- closes the viewer in the focused (second) window only
+if leaf_windows() ~= 1 then
+  fail("closing the focused viewer closed others too: " .. leaf_windows())
+end
+vim.api.nvim_win_close(second_win, true)
+if #vim.api.nvim_list_wins() ~= wins_before then
+  fail("coexistence test changed the window count")
+end
+vim.fn.delete(fifth)
+-- toggle from the source buffer still closes the remaining split-time viewer
+-- (none here — single leftover is the host viewer): close it for step 6.
+vim.api.nvim_set_current_win(host_win)
+leaf.close()
+if leaf.is_open() then
+  fail("post-coexistence close failed")
+end
+
 -- 6. Interactive Mode: hint winbar, wheel forwarded as scroll keys, closes cleanly.
 local big = vim.fn.tempname() .. ".md"
 local big_lines = { "# Big Doc", "" }

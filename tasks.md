@@ -173,3 +173,20 @@ native `<C-\><C-n>` terminal escape and trapped all user keybindings.
 - [x] Explorer-forced split folds into the taken-over window, geometry intact — smoke step 4e + real-profile e2e (neo-tree event trace verified)
 - [x] No terminal-mode mapping shadows `<C-\>`; native escape intact — code removal + smoke assertion
 - [x] Docs: README, doc/leaf.txt, SPEC.md
+
+## 11: Multi-viewer — concurrent renders, per-window close, panel-safe targeting
+
+**Blocked by:** 09, 10
+
+**What to build:** the Viewer becomes per-window instead of a singleton.
+Every `:Leaf x.md` renders in the focused window's own Viewer; closing is
+scoped to that window only. Bare `:Leaf` keeps the classic toggle via
+source lookup: typed in the *source buffer*, it closes the render showing
+it. Window take-over never targets a sidebar/panel (buftype-guarded), so
+layout managers like edgy never see a terminal inside their managed area.
+
+- [x] Viewer registry keyed by host window; `M.close(win)` scoped; `find_by_source` toggle fallback — viewer.lua, init.lua
+- [x] Concurrent renders coexist; closing the focused one leaves others — smoke step 4f
+- [x] Dup'd frame leaving a clone window no longer kills the render (scheduled host-window check in bind_leave) — smoke 4f
+- [x] Take-over skips non-content windows (sidebar/panel guard) — viewer.target_window; real-profile e2e
+- [x] Docs: README, doc/leaf.txt, SPEC.md (toggle/placement semantics)
