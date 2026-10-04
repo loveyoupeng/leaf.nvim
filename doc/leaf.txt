@@ -10,8 +10,12 @@ output — runs in one of two Modes:
 - Static:       one-shot `leaf --inline` output piped into a terminal buffer
 - Interactive:  the leaf TUI running live via |termopen()|
 
-and one of three Placements:
+and one of four Placements:
 
+- Window: the render takes over the content window like a normal |:edit|
+          (the previously visited window when invoked from an explorer
+          sidebar); closing swaps the displaced buffer back in, and
+          switching that window to another buffer closes the Viewer
 - Split:  vertical split right of the invoking window
 - Float:  centered floating window (opt-in only, never the default)
 - Tab:    new tabpage holding only the render; closing the Viewer closes
@@ -43,9 +47,10 @@ COMMANDS                                                        *leaf-commands*
         4. Nothing inferable — open the Picker.
 
         Placement under the default position = "auto": Split for a buffer
-        source (1/2 above), Tab for a file source (1/3/4). A Tab Viewer
-        holds only the render; closing it wipes the tabpage and jumps back
-        to the previous tab.
+        source (1/2 above), Window for a file source (1/3/4): the render
+        takes over the content window (the previously visited window when
+        invoked from an explorer sidebar) without disturbing the layout;
+        closing restores the displaced buffer.
 
         Bang flips the configured default Mode: with interactive = false,
         :Leaf! opens leaf's TUI with --watch. Interactive Mode needs the
@@ -65,7 +70,7 @@ COMMANDS                                                        *leaf-commands*
 The Picker has no standalone command: it opens as the |:Leaf| fallback
 when nothing is inferable. It lists Markdown files under the project root
 with a leaf-rendered preview pane; selecting an entry opens it in a Viewer
-(default Mode, Tab placement under "auto").
+(default Mode, Window placement under "auto").
 
 ==============================================================================
 SETUP                                                              *leaf-setup*
@@ -73,7 +78,8 @@ SETUP                                                              *leaf-setup*
 require("leaf").setup({}) ~
   leaf_path                  string?   leaf binary; nil = $PATH lookup
   interactive                boolean   default Mode                     false
-  position                   string    "auto"|"split"|"float"|"tab"    "auto"
+  position                   string    "auto"|"window"|"split"|"float"|"tab"
+                                                                 "auto"
   theme                      string?   leaf --theme value
   border                     string    Float border                   "rounded"
   width_ratio                number    Float width ratio                  0.7

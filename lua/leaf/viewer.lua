@@ -19,6 +19,8 @@ local M = {}
 ---@field augroup integer Autocmds owned by this Viewer
 ---@field wipe_au? integer Close-on-wipe autocmd for the current frame buffer
 ---@field tabpage? integer Owning tabpage — set for Tab placement only
+---@field prev_buf? integer Buffer displaced by a Window take-over, restored on close
+---@field leave_au? integer Close-on-swap autocmd for the current frame (Window placement)
 
 ---@type leaf.ViewerState?
 local state
@@ -54,10 +56,19 @@ function M.close()
     return
   end
   local win, buf, tabpage = state.win, state.buf, state.tabpage
+  local placement = state.request.placement
+  local prev_buf = state.prev_buf
   stop_job()
   cleanup_autocmds()
   cleanup_tmpfile()
-  if tabpage and vim.api.nvim_tabpage_is_valid(tabpage) then
+  if placement == "window" then
+    -- Take-over placement: the window stays, geometry untouched. Put the
+    -- displaced buffer back; if it is gone, deleting the frame below lets
+    -- Nvim swap in an alternate.
+    if vim.api.nvim_win_is_valid(win) and prev_buf and vim.api.nvim_buf_is_valid(prev_buf) then
+      pcall(vim.api.nvim_win_set_buf, win, prev_buf)
+    end
+  elseif tabpage and vim.api.nvim_tabpage_is_valid(tabpage) then
     -- Tab placement: closing the Viewer closes its tabpage. Jump back to
     -- the last-visited tab, but only when focus is still inside the
     -- Viewer tab — from elsewhere the user's focus must not move.
@@ -102,9 +113,32 @@ local function float_opts()
   }
 end
 
----@param placement "split"|"float"|"tab"
+---The window a Window take-over occupies: where a normal :edit would land.
+---Current window, except when the invoking focus is a file-explorer sidebar
+---(neo-tree) — then the previously visited window, the same target an
+---explorer's own "open" uses.
+---@return integer win
+local function target_window()
+  local cur = vim.api.nvim_get_current_win()
+  if vim.bo[vim.api.nvim_win_get_buf(cur)].filetype ~= "neo-tree" then
+    return cur
+  end
+  local prev = vim.fn.win_getid(vim.fn.winnr("#"))
+  if prev ~= 0 and prev ~= cur and vim.api.nvim_win_is_valid(prev) then
+    return prev
+  end
+  -- Degenerate layout (no usable previous window): take the sidebar itself.
+  return cur
+end
+
+---@param placement "split"|"float"|"tab"|"window"
 ---@return integer win
 local function open_window(placement)
+  if placement == "window" then
+    local win = target_window()
+    vim.api.nvim_set_current_win(win)
+    return win
+  end
   if placement == "split" then
     local source_win = vim.api.nvim_get_current_win()
     local source_width = vim.api.nvim_win_get_width(source_win)
@@ -142,6 +176,19 @@ local function bind_wipe(buf)
   })
 end
 
+---Window placement only: the user swapping the taken-over window to another
+---buffer (:b …) counts as closing the Viewer. Static frame swaps delete the
+---autocmd first, so live re-render stays silent.
+---@param buf integer
+local function bind_leave(buf)
+  state.leave_au = vim.api.nvim_create_autocmd("BufWinLeave", {
+    group = state.augroup,
+    buffer = buf,
+    once = true,
+    callback = close_mapping,
+  })
+end
+
 ---Swap a fresh scratch buffer into the Viewer's window. The caller attaches
 ---the terminal surface (open_term for Static, termopen for Interactive) —
 ---termopen refuses a buffer open_term already touched.
@@ -151,6 +198,10 @@ local function fresh_frame()
   if state.wipe_au then
     pcall(vim.api.nvim_del_autocmd, state.wipe_au)
     state.wipe_au = nil
+  end
+  if state.leave_au then
+    pcall(vim.api.nvim_del_autocmd, state.leave_au)
+    state.leave_au = nil
   end
   local buf = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_win_set_buf(state.win, buf)
@@ -163,6 +214,9 @@ local function fresh_frame()
   vim.keymap.set("n", "q", close_mapping, opts)
   vim.keymap.set("n", "<Esc>", close_mapping, opts)
   bind_wipe(buf)
+  if state.request.placement == "window" then
+    bind_leave(buf)
+  end
   return buf
 end
 
@@ -310,12 +364,16 @@ function M.open(request)
   M.close()
   local augroup = vim.api.nvim_create_augroup("LeafViewer", { clear = true })
   local win = open_window(request.placement)
+  -- Window placement: the window still shows the buffer being displaced
+  -- (fresh_frame swaps it out next); remember it for restore-on-close.
+  local prev_buf = request.placement == "window" and vim.api.nvim_win_get_buf(win) or nil
   state = {
     win = win,
     buf = -1, -- set by fresh_frame()
     request = request,
     augroup = augroup,
     tabpage = request.placement == "tab" and vim.api.nvim_get_current_tabpage() or nil,
+    prev_buf = prev_buf,
   }
   -- User-closed window unloads the whole Viewer (job, autocmds, temp file).
   vim.api.nvim_create_autocmd("WinClosed", {

@@ -103,7 +103,9 @@ function M.decide(ctx)
   local position = config.options.position
   local placement = position
   if position == "auto" then
-    placement = from_current and "split" or "tab"
+    -- Buffer Source renders beside the editor that owns it; a File Source
+    -- takes over the content window like a normal :edit.
+    placement = from_current and "split" or "window"
   end
 
   return {

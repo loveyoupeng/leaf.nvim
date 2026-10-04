@@ -101,30 +101,42 @@ if leaf.is_open() then
   fail("viewer did not close on toggle")
 end
 
--- 4. Explicit path to another file → Tab placement: render-only tabpage.
+-- 4. Explicit path to another file → Window placement: the render takes
+-- over the invoking window like a normal :edit; geometry untouched.
 local other = vim.fn.tempname() .. ".md"
 vim.fn.writefile({ "# Second File" }, other)
+local wins_before = #vim.api.nvim_list_wins()
 local tabs_before = #vim.api.nvim_list_tabpages()
-local main_tab = vim.api.nvim_get_current_tabpage()
+local host_win = vim.api.nvim_get_current_win()
+local host_buf = vim.api.nvim_win_get_buf(host_win)
 leaf.toggle({ fargs = { other } })
 if not leaf.is_open() then
   fail("viewer did not open for explicit path")
 end
-if #vim.api.nvim_list_tabpages() ~= tabs_before + 1 then
-  fail("expected a new tabpage for an explicit path, got " .. #vim.api.nvim_list_tabpages())
+if #vim.api.nvim_list_wins() ~= wins_before then
+  fail("window placement changed the window count: " .. #vim.api.nvim_list_wins())
+end
+if #vim.api.nvim_list_tabpages() ~= tabs_before then
+  fail("window placement created a tabpage")
+end
+if vim.api.nvim_get_current_win() ~= host_win then
+  fail("window placement did not stay in the invoking window")
+end
+if vim.bo[vim.api.nvim_win_get_buf(host_win)].filetype ~= "leaf" then
+  fail("window placement did not take over the invoking window")
 end
 if not viewer_has("Second File") then
-  fail("tab render never showed 'Second File'")
+  fail("render never showed 'Second File'")
 end
 
 -- 4a. Live re-render when ANOTHER buffer writes the rendered file
 -- (BufWritePost pattern on the path, not buffer-local).
-local viewer_tab = vim.api.nvim_get_current_tabpage()
-vim.cmd("tabprevious")
+vim.cmd("vsplit")
 vim.cmd("edit " .. vim.fn.fnameescape(other))
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "# Rewritten Elsewhere" })
 vim.cmd("write")
-vim.api.nvim_set_current_tabpage(viewer_tab)
+vim.cmd("close")
+vim.api.nvim_set_current_win(host_win)
 if not viewer_has("Rewritten Elsewhere") then
   fail("file-source viewer did not follow an external write; lines: " .. vim.inspect(viewer_lines()))
 end
@@ -137,25 +149,41 @@ leaf.toggle({ fargs = { third } })
 if not leaf.is_open() then
   fail("retargeted viewer is not open")
 end
-if #vim.api.nvim_list_tabpages() ~= tabs_before + 1 then
-  fail("retarget leaked a tabpage: " .. #vim.api.nvim_list_tabpages())
+if #vim.api.nvim_list_wins() ~= wins_before then
+  fail("retarget changed the window count: " .. #vim.api.nvim_list_wins())
 end
 if not viewer_has("Third File") then
   fail("retarget never showed 'Third File'")
 end
 
--- 4c. Closing the Tab Viewer closes its tabpage and returns focus.
+-- 4c. Close: the displaced buffer returns to the taken-over window.
 leaf.close()
 if leaf.is_open() then
-  fail("close did not close the tab viewer")
+  fail("close did not close the window viewer")
 end
-if #vim.api.nvim_list_tabpages() ~= tabs_before then
-  fail("tabpage leaked after close: " .. #vim.api.nvim_list_tabpages())
+if vim.api.nvim_win_get_buf(host_win) ~= host_buf then
+  fail("close did not restore the displaced buffer")
 end
-if vim.api.nvim_get_current_tabpage() ~= main_tab then
-  fail("closing the tab viewer did not return focus to the invoking tab")
+if #vim.api.nvim_list_wins() ~= wins_before then
+  fail("close changed the window count")
 end
 vim.fn.delete(third)
+
+-- 4d. Swapping the taken-over window to another buffer closes the Viewer.
+leaf.toggle({ fargs = { other } })
+if not leaf.is_open() then
+  fail("viewer did not reopen for swap-away test")
+end
+vim.api.nvim_set_current_win(host_win)
+vim.cmd("buffer " .. host_buf)
+if not vim.wait(3000, function()
+  return not leaf.is_open()
+end, 50) then
+  fail("swapping buffers did not close the window viewer")
+end
+if #vim.api.nvim_list_wins() ~= wins_before then
+  fail("swap-away changed the window count")
+end
 
 -- 6. Interactive Mode: hint winbar, wheel forwarded as scroll keys, closes cleanly.
 local big = vim.fn.tempname() .. ".md"

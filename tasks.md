@@ -135,3 +135,22 @@ unneeded or undeliverable in this transport (evidence in commit history).
 - [x] Wheel events forwarded into the interactive TUI as arrow-key scrolls — smoke step 6
 - [x] Winbar key hints in both modes — smoke steps 1c/6; `show_hints` option, `scroll_lines` option
 - [x] Docs: README, doc/leaf.txt, SPEC.md configuration surface + decisions
+
+## 09: Window placement — file sources render like a normal :edit
+
+**Blocked by:** 07 (supersedes its Tab default for file sources)
+
+**What to build:** `position = "auto"` sends File Sources (explicit path,
+explorer node, picker selection) to the **Window** placement instead of a
+tabpage: the render takes over the content window like a normal `:edit`
+(previous window when invoked from an explorer sidebar), leaving the
+sidebar and all splits untouched; closing swaps the displaced buffer back
+in; the user swapping that window to another buffer closes the Viewer.
+`"tab"`/`"float"` remain opt-in values.
+
+- [x] Take-over renders in the invoking/previous window; window and tab counts unchanged — smoke step 4
+- [x] Live reload + retarget work under take-over — smoke steps 4a/4b
+- [x] Close restores the displaced buffer into the same window — smoke step 4c
+- [x] `:buffer` swap-away closes the Viewer (BufWinLeave) and survives static frame swaps — smoke step 4d + 4a
+- [x] Verified against real LazyVim + neo-tree: no new tab, sidebar intact, sidebar-initiated toggle closes and restores — e2e driver
+- [x] Docs: CONTEXT.md (Placement gains Window), SPEC.md, README.md, doc/leaf.txt

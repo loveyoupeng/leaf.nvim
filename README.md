@@ -2,8 +2,8 @@
 
 Markdown preview in Neovim powered by the
 [leaf](https://github.com/RivoLink/leaf) CLI — static render or live
-interactive TUI, in a split, a float, or a new tab, with a fuzzy Markdown
-picker. glow.nvim-style glue, in the spirit of LazyVim.
+interactive TUI, in your window, a split, a float, or a new tab — with a
+fuzzy Markdown picker. glow.nvim-style glue, in the spirit of LazyVim.
 
 ## Requirements
 
@@ -31,12 +31,14 @@ picker. glow.nvim-style glue, in the spirit of LazyVim.
 
 - `:Leaf` — preview the current Markdown buffer (toggle: run again, from
   anywhere, to close)
-- `:Leaf path/to/file.md` — render another file in a **new tab**; explicit
-  path while a Viewer is open retargets it instead of closing
+- `:Leaf path/to/file.md` — render another file **in the same window** like
+  a normal `:edit`; your layout doesn't move, and closing brings your
+  buffer back. Explicit path while a Viewer is open retargets it.
 - `:Leaf!` — bang flips the mode: leaf's interactive TUI with `--watch`,
   live-reloading whenever you `:w` in Neovim
 - `:Leaf` with the cursor on a Markdown file in **neo-tree** — render that
-  file in a new tab; a non-Markdown file or directory errors
+  file in the main window, sidebar untouched; a non-Markdown file or
+  directory errors
 - `:Leaf` anywhere else (non-Markdown buffer, nothing to infer) — opens the
   Markdown **Picker** (fzf-lua)
 - Static viewer keys: `q`/`<Esc>` close; `j`/`k`/`<C-d>`/`<C-u>` and the
@@ -57,9 +59,12 @@ instead — save first, then live reload follows every `:w`.
 
 `position = "auto"` (default): previewing the Markdown buffer you're
 editing opens a **vertical split to its right**; a file source (explicit
-path, explorer node, picker selection) renders fullscreen in a **new tab**
-that closes back to where you came from. A float is opt-in only. Force any
-placement with `"split"` / `"float"` / `"tab"`.
+path, explorer node, picker selection) **takes over the content window**
+like a normal `:edit` — from an explorer sidebar it occupies the window
+you last edited in, so the sidebar and every split keep their geometry.
+Closing swaps your displaced buffer back in; switching that window to
+another buffer closes the Viewer. Float and Tab are opt-in only. Force any
+placement with `"window"` / `"split"` / `"float"` / `"tab"`.
 
 ## Options
 
@@ -67,7 +72,7 @@ placement with `"split"` / `"float"` / `"tab"`.
 require("leaf").setup({
   leaf_path = nil,        -- leaf binary; nil = search $PATH
   interactive = false,    -- default mode; bang on :Leaf flips it
-  position = "auto",      -- "auto" | "split" | "float" | "tab"
+  position = "auto",      -- "auto" | "window" | "split" | "float" | "tab"
   theme = nil,            -- leaf --theme
   border = "rounded",     -- float border
   width_ratio = 0.7,      -- float width

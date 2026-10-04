@@ -5,7 +5,7 @@ local M = {}
 ---@class leaf.Config
 ---@field leaf_path? string Path/executable name of the leaf binary; nil = search $PATH
 ---@field interactive boolean Default Mode: interactive TUI instead of static render
----@field position "auto"|"split"|"float"|"tab" Viewer placement
+---@field position "auto"|"split"|"float"|"tab"|"window" Viewer placement
 ---@field theme? string Leaf theme passed via --theme
 ---@field border string Float border style
 ---@field width_ratio number Float width as a ratio of the editor
@@ -19,7 +19,7 @@ local M = {}
 ---@class leaf.SetupOpts
 ---@field leaf_path? string
 ---@field interactive? boolean
----@field position? "auto"|"split"|"float"|"tab"
+---@field position? "auto"|"split"|"float"|"tab"|"window"
 ---@field theme? string
 ---@field border? string
 ---@field width_ratio? number
@@ -67,7 +67,7 @@ M.defaults = {
 M.options = vim.deepcopy(M.defaults)
 
 ---Valid placements; anything else falls back to "auto" with a warning.
-local positions = { auto = true, split = true, float = true, tab = true }
+local positions = { auto = true, split = true, float = true, tab = true, window = true }
 
 ---@param opts? leaf.SetupOpts
 function M.setup(opts)

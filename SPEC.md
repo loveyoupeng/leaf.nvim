@@ -49,8 +49,8 @@ file under its cursor instead.
    tell me to save the file first, so that I understand interactive mode
    needs an on-disk file.
 7. As a Markdown author, I want `:Leaf path/to/file.md` to render a file
-   other than the current buffer in a new tabpage, so I get a fullscreen
-   render that drops me back where I was when closed.
+   other than the current buffer in the same window like a normal `:edit`,
+   so my window layout is untouched and I get my buffer back on close.
 8. As a Markdown author, I want bare `:Leaf` to close the Viewer from
    anywhere (toggle semantics, matching `MarkdownPreviewToggle`), while
    `:Leaf path.md` with a Viewer open retargets it to that file.
@@ -80,15 +80,16 @@ file under its cursor instead.
     GitHub, with `opts = {}` for configuration, so the plugin follows
     ecosystem conventions.
 18. As a user browsing files in neo-tree, I want `:Leaf` with the cursor on
-    a Markdown file to render that file in a new tab, and on anything else
-    to say why not, so the explorer is a first-class launch surface.
+    a Markdown file to render that file in the main window without
+    disturbing the sidebar, and on anything else to say why not, so the
+    explorer is a first-class launch surface.
 
 ## Implementation Decisions
 
 - **Domain model** (see `CONTEXT.md`): *Viewer* on two axes — **Mode**
-  (Static | Interactive) × **Placement** (Split | Float | Tab); *Picker* is
-  the fzf-lua discovery surface; *Explorer* is the neo-tree panel whose
-  cursor node can become a File Source.
+  (Static | Interactive) × **Placement** (Window | Split | Float | Tab);
+  *Picker* is the fzf-lua discovery surface; *Explorer* is the neo-tree
+  panel whose cursor node can become a File Source.
 - **Static Mode**: spawn `leaf --inline ansi:<width> <path>`, pipe stdout
   into `nvim_open_term` in a scratch buffer (glow.nvim's mechanism,
   verified against its source). Read-only; `q`/`<Esc>` close.
@@ -106,15 +107,18 @@ file under its cursor instead.
   key hint sits in the Viewer's winbar (`show_hints = true` default).
 - **Placement rule** (`position = "auto"`, default): a Buffer Source
   renders in a Split right of the invoking window (`split_ratio = 0.5`); a
-  File Source (explicit path, explorer node, picker selection) renders in
-  a new Tab holding only the render — closing the Viewer wipes the tabpage
-  and returns focus to the previously active tab. Float (centered,
-  `width_ratio`/`height_ratio` 0.7, rounded border) is opt-in only:
-  `position = "float"`, and `"split"`/`"tab"` force their placement for
-  any source. Rationale: a file render has no source window to sit beside,
-  and a transient fullscreen render behaves like opening the file itself
-  in a new tab (`:tabedit`), which is the muscle memory explorer users
-  already have.
+  File Source (explicit path, explorer node, picker selection) takes over
+  the content **Window** like a normal `:edit` — invoked from an explorer
+  sidebar, the target is the previously visited window, so the sidebar and
+  every split keep their geometry. Closing the Viewer swaps the displaced
+  buffer back in; the user switching that window to another buffer
+  (`:b …`) counts as closing the Viewer (`BufWinLeave`). Float (centered,
+  `width_ratio`/`height_ratio` 0.7, rounded border) and Tab (render-only
+  tabpage) are opt-in: `position = "float" | "tab"`; `"split"`/`"window"`
+  force their placement for any source. Rationale: a file render has no
+  source window to sit beside, and opening it "as other buffers open" is
+  the muscle memory explorer users already have — a fullscreen tab hides
+  the very layout the user asked to preserve.
 - **Source semantics**: Static renders *buffer content* when targeting the
   current buffer (dump lines to a temp `.md`; unsaved edits included) and
   the *file on disk* for file sources. Interactive always uses the on-disk
