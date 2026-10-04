@@ -148,49 +148,67 @@ if not viewer_has("Rewritten Elsewhere") then
   fail("file-source viewer did not follow an external write; lines: " .. vim.inspect(viewer_lines()))
 end
 
--- 4b. Toggle with an explicit arg retargets the open Viewer instead of
--- closing it.
+-- 4b. One render per file: a different file opens its OWN leaf:// buffer in
+-- the same window; the first render survives hidden, never overridden.
+local function leaf_buffers()
+  local n = 0
+  for _, b in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.bo[b].buflisted and vim.api.nvim_buf_get_name(b):find("^leaf://") then
+      n = n + 1
+    end
+  end
+  return n
+end
 local third = vim.fn.tempname() .. ".md"
 vim.fn.writefile({ "# Third File" }, third)
 leaf.toggle({ fargs = { third } })
-if not leaf.is_open() then
-  fail("retargeted viewer is not open")
+if not viewer_has("Third File") then
+  fail("second file never rendered: " .. vim.inspect(viewer_lines()))
+end
+if leaf_buffers() ~= 2 then
+  fail("expected two live leaf:// buffers, got " .. leaf_buffers())
 end
 if #vim.api.nvim_list_wins() ~= wins_before then
-  fail("retarget changed the window count: " .. #vim.api.nvim_list_wins())
-end
-if not viewer_has("Third File") then
-  fail("retarget never showed 'Third File'")
+  fail("second render changed the window count")
 end
 
--- 4c. Close: the displaced buffer returns to the taken-over window.
+-- 4c. Opening an already-open file jumps to its render — no duplicate, no
+-- close, no count changes.
+leaf.toggle({ fargs = { other } })
+if leaf_buffers() ~= 2 then
+  fail("jump created a duplicate render: " .. leaf_buffers())
+end
+if vim.bo[vim.api.nvim_win_get_buf(host_win)].filetype ~= "leaf" then
+  fail("jump did not bring the render into view")
+end
+if not viewer_has("Rewritten Elsewhere") then
+  fail("jumped render lost its content; lines: " .. vim.inspect(viewer_lines()))
+end
+
+-- 4d. Close on the jumped-back render restores the displaced buffer; the
+-- hidden third render is untouched. Then close it via jump + close.
 leaf.close()
-if leaf.is_open() then
-  fail("close did not close the window viewer")
+if leaf.is_open(host_win) then
+  fail("close did not close the shown viewer")
 end
 if vim.api.nvim_win_get_buf(host_win) ~= host_buf then
   fail("close did not restore the displaced buffer")
 end
+if leaf_buffers() ~= 1 then
+  fail("close killed the hidden render too: " .. leaf_buffers())
+end
+leaf.toggle({ fargs = { third } }) -- jump back to the third file's render
+if not leaf.is_open(host_win) then
+  fail("jump-back did not resurface the hidden render")
+end
+leaf.close()
+if leaf.is_open() then
+  fail("third render did not close")
+end
 if #vim.api.nvim_list_wins() ~= wins_before then
-  fail("close changed the window count")
+  fail("window count drifted across the cycle")
 end
 vim.fn.delete(third)
-
--- 4d. Swapping the taken-over window to another buffer closes the Viewer.
-leaf.toggle({ fargs = { other } })
-if not leaf.is_open() then
-  fail("viewer did not reopen for swap-away test")
-end
-vim.api.nvim_set_current_win(host_win)
-vim.cmd("buffer " .. host_buf)
-if not vim.wait(3000, function()
-  return not leaf.is_open()
-end, 50) then
-  fail("swapping buffers did not close the window viewer")
-end
-if #vim.api.nvim_list_wins() ~= wins_before then
-  fail("swap-away changed the window count")
-end
 
 -- 4e. A window born *showing the sidebar* (WinNew) that then receives a
 -- real file folds back into the taken-over window: explorers refuse

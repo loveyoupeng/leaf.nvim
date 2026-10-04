@@ -73,9 +73,9 @@ COMMANDS                                                        *leaf-commands*
         `show_hints = false`.
 
 The Picker has no standalone command: it opens as the |:Leaf| fallback
-when nothing is inferable. It lists Markdown files under the project root
-with a leaf-rendered preview pane; selecting an entry opens it in a Viewer
-(default Mode, Window placement under "auto").
+when nothing is inferable. It lists Markdown files under the current
+working directory with a leaf-rendered preview pane; selecting an entry
+opens it in a Viewer (default Mode, Window placement under "auto").
 
 ==============================================================================
 SETUP                                                              *leaf-setup*

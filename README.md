@@ -41,7 +41,8 @@ fuzzy Markdown picker. glow.nvim-style glue, in the spirit of LazyVim.
   file in the main window, sidebar untouched; a non-Markdown file or
   directory errors
 - `:Leaf` anywhere else (non-Markdown buffer, nothing to infer) — opens the
-  Markdown **Picker** (fzf-lua)
+  Markdown **Picker** (fzf-lua) over the files in your current working
+  directory
 - Static viewer keys: `q`/`<Esc>` close; `j`/`k`/`<C-d>`/`<C-u>` and the
   mouse wheel scroll the render (it's a terminal buffer with full
   scrollback). Interactive: wheel scrolls (forwarded as arrow keys —

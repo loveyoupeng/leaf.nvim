@@ -174,19 +174,22 @@ native `<C-\><C-n>` terminal escape and trapped all user keybindings.
 - [x] No terminal-mode mapping shadows `<C-\>`; native escape intact — code removal + smoke assertion
 - [x] Docs: README, doc/leaf.txt, SPEC.md
 
-## 11: Multi-viewer — concurrent renders, per-window close, panel-safe targeting
+## 11: Multi-viewer — one render per file, jump-or-open, panel-safe targeting
 
 **Blocked by:** 09, 10
 
-**What to build:** the Viewer becomes per-window instead of a singleton.
-Every `:Leaf x.md` renders in the focused window's own Viewer; closing is
-scoped to that window only. Bare `:Leaf` keeps the classic toggle via
-source lookup: typed in the *source buffer*, it closes the render showing
-it. Window take-over never targets a sidebar/panel (buftype-guarded), so
-layout managers like edgy never see a terminal inside their managed area.
+**What to build:** the Viewer stops being a singleton. Every render is a
+live `leaf://<file>` listed buffer; `:Leaf x.md` is jump-or-open (focus
+the existing render if the file is already open, else take over the
+content window — previous renders survive as hidden buffer tabs). Bare
+`:Leaf` closes the render shown in the focused window, or the one
+rendering the focused buffer. Window take-over never targets a
+sidebar/panel (buftype-guarded), so layout managers like edgy never see a
+terminal inside their managed area.
 
-- [x] Viewer registry keyed by host window; `M.close(win)` scoped; `find_by_source` toggle fallback — viewer.lua, init.lua
-- [x] Concurrent renders coexist; closing the focused one leaves others — smoke step 4f
-- [x] Dup'd frame leaving a clone window no longer kills the render (scheduled host-window check in bind_leave) — smoke 4f
+- [x] Registry keyed by frame buffer; jump-or-open by absolute path; hidden renders survive — viewer.lua, smoke steps 4b–4d
+- [x] Close scoped to the focused window's render; source-buffer toggle fallback — init.lua, smoke 4d/4f
+- [x] Concurrent visible renders coexist; closing leaves the others — smoke step 4f
 - [x] Take-over skips non-content windows (sidebar/panel guard) — viewer.target_window; real-profile e2e
+- [x] Picker lists the *current working directory* with a pure-Lua walk (no ripgrep dependency — absent in the target env and silently yielded 0 entries) and fzf_exec fed an entry table (argv table became bogus pickable tokens) — e2e listing + selection open
 - [x] Docs: README, doc/leaf.txt, SPEC.md (toggle/placement semantics)

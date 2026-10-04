@@ -61,8 +61,8 @@ file under its cursor instead.
     `:Leaf` to open a file Picker so that I can choose a Markdown file to
     view.
 11. As a user browsing Markdown files, I want a picker (fzf-lua) over the
-    project root with a leaf-rendered preview pane, so that I can see
-    content before opening.
+    current working directory with a leaf-rendered preview pane, so that
+    I can see content before opening.
 12. As a user selecting a file in the Picker, I want it to open in a Viewer
     using my configured mode, so the picker is a launcher, not a dead end.
 13. As a user without fzf-lua installed, I want the Viewer to keep working
@@ -158,10 +158,10 @@ file under its cursor instead.
   - *viewer*: window/job lifecycle for Static and Interactive across all
     three placements (including tabpage create/teardown with focus return);
     owns the live-reload autocmd.
-  - *picker*: file discovery over the project root (`LazyVim.root()` with
-    cwd fallback; Markdown extension filter; `leaf --inline` preview pane;
-    selection opens the Viewer). Single backend: fzf-lua, probed lazily at
-    open time.
+  - *picker*: file discovery over the current working directory (pure-Lua
+    walk filtered by Markdown extensions — no ripgrep or other external
+    dependency — `leaf --inline` preview pane; selection opens the
+    Viewer). Single backend: fzf-lua, probed lazily at open time.
   - *health*: `:checkhealth leaf` — binary presence/version, picker plugin
     availability.
 - **Configuration surface**: `leaf_path`, `interactive = false`,

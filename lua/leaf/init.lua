@@ -38,24 +38,38 @@ local function dispatch(decision)
   end
 end
 
----:Leaf entry point. Toggle semantics are per window: bare :Leaf closes
----the Viewer hosted by the focused window, if any. An explicit file arg
----always means "show this": a Viewer in the focused window is closed and
----retargeted; Viewers in other windows stay open.
+---:Leaf entry point. File targets (explicit arg, explorer node) are
+---jump-or-open: the render buffer is created once per file and refocused,
+---never duplicated and never killed by opening another file. A bare :Leaf
+---closes the Viewer shown in the focused window, or the one rendering the
+---focused buffer (the classic source toggle); otherwise it opens.
 ---@param opts { fargs?: string[], bang?: boolean }?
 function M.toggle(opts)
   local ctx = context(opts)
-  local cur = vim.api.nvim_get_current_win()
-  local cur_buf = vim.api.nvim_get_current_buf()
-  -- Close priority: the focused window's Viewer, else the Viewer showing
-  -- the focused buffer (the classic "toggle off from the source" case).
-  -- Other Viewers are never affected.
-  local target = viewer.is_open(cur) and cur or viewer.find_by_source(cur_buf)
-  if target then
-    viewer.close(target)
-    if not ctx.arg or ctx.arg == "" then
+  -- jump-or-open for file targets
+  local want ---@type string?
+  if ctx.arg and ctx.arg ~= "" then
+    want = ctx.arg
+  elseif ctx.explorer and not ctx.explorer.is_dir and config.is_markdown_ext(ctx.explorer.path) then
+    want = ctx.explorer.path
+  end
+  if want then
+    local hit = viewer.find_by_path(want)
+    if hit then
+      viewer.focus(hit)
       return
     end
+    dispatch(resolve.decide(ctx))
+    return
+  end
+  -- bare: close the selected render, else open
+  local st = viewer.at_window(vim.api.nvim_get_current_win())
+  if not st then
+    st = viewer.find_by_source(vim.api.nvim_get_current_buf())
+  end
+  if st then
+    viewer.close(st)
+    return
   end
   dispatch(resolve.decide(ctx))
 end
@@ -67,9 +81,10 @@ function M.open_path(path)
   dispatch(resolve.decide(context({ fargs = { path } })))
 end
 
+---@param win? integer Limit to the viewer shown in this window; nil = any
 ---@return boolean
-function M.is_open()
-  return viewer.is_open()
+function M.is_open(win)
+  return viewer.is_open(win)
 end
 
 function M.close()
