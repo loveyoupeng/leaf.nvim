@@ -51,12 +51,13 @@ file under its cursor instead.
 7. As a Markdown author, I want `:Leaf path/to/file.md` to render a file
    other than the current buffer in the same window like a normal `:edit`,
    so my window layout is untouched and I get my buffer back on close.
-8. As a Markdown author, I want bare `:Leaf` to close the Viewer from
-   anywhere (toggle semantics, matching `MarkdownPreviewToggle`), while
-   `:Leaf path.md` with a Viewer open retargets it to that file.
-9. As a Markdown author, I want `q`/`<Esc>` to close the static Viewer and
-   leaf's own quit key to close the interactive one, so the UI is never
-   trapping.
+8. As a Markdown author, I want bare `:Leaf` to close the render shown in
+   the focused window (or the render of the file I'm in), and `:Leaf
+   path.md` to jump to that file's render if it exists — or open one —
+   without disturbing others.
+9. As a Markdown author, I want to close a render with my normal buffer
+   tooling (`<leader>bd`, `:bd`, bufferline) and never have a plugin
+   shadow my keybindings, so the render window obeys my muscle memory.
 10. As a user on a non-Markdown buffer with nothing else to infer, I want
     `:Leaf` to open a file Picker so that I can choose a Markdown file to
     view.
@@ -91,8 +92,9 @@ file under its cursor instead.
   *Picker* is the fzf-lua discovery surface; *Explorer* is the neo-tree
   panel whose cursor node can become a File Source.
 - **Static Mode**: spawn `leaf --inline ansi:<width> <path>`, pipe stdout
-  into `nvim_open_term` in a scratch buffer (glow.nvim's mechanism,
-  verified against its source). Read-only; `q`/`<Esc>` close.
+  into `nvim_open_term` in a listed `leaf://` buffer (glow.nvim's
+  mechanism, verified against its source). Read-only; no plugin mappings —
+  closing is the user's own buffer tooling watched via `BufWipeout`.
 - **Interactive Mode**: `termopen("leaf --watch <path>")` in the window's
   buffer. Keys pass to the TUI; leaf's quit ends the job and the plugin
   wipes the window. No plugin mapping may shadow user keys: the native

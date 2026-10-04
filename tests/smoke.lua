@@ -64,8 +64,12 @@ for _, win in ipairs(vim.api.nvim_list_wins()) do
     hint_win = win
   end
 end
-if not vim.wo[hint_win].winbar:find("<Esc>", 1, true) then
+if not vim.wo[hint_win].winbar:find("close", 1, true) then
   fail("static viewer shows no hint winbar: " .. vim.inspect(vim.wo[hint_win].winbar))
+end
+-- no plugin-owned close keys: closing belongs to the user's own tooling
+if vim.fn.maparg("q", "n", false, true).buffer == 1 then
+  fail("static viewer must not shadow q")
 end
 
 -- 2. Live re-render on save (static, buffer source).
@@ -75,20 +79,25 @@ if not viewer_has("changed on save") then
   fail("viewer did not refresh after :write; lines: " .. vim.inspect(viewer_lines()))
 end
 
--- 3. q in the static Viewer closes it.
+-- 3. Deleting the frame buffer (the LazyVim close path: :bd, <leader>bd,
+-- bufferline) closes just this Viewer and restores the window.
 local viewer_win
 for _, win in ipairs(vim.api.nvim_list_wins()) do
   if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "leaf" then
     viewer_win = win
   end
 end
-vim.api.nvim_set_current_win(viewer_win)
-vim.api.nvim_feedkeys("q", "x", false)
+local frame = vim.api.nvim_win_get_buf(viewer_win)
+vim.api.nvim_buf_delete(frame, { force = true })
 vim.wait(500, function()
   return not leaf.is_open()
 end, 50)
 if leaf.is_open() then
-  fail("q did not close the static viewer")
+  fail("deleting the frame buffer did not close the static viewer")
+end
+if vim.api.nvim_win_is_valid(viewer_win) then
+  -- split placement: the window is retired with the viewer
+  fail("split window lingered after frame deletion")
 end
 
 -- 3b. Toggle opens, toggle closes.

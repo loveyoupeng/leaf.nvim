@@ -60,14 +60,15 @@ COMMANDS                                                        *leaf-commands*
         :Leaf! opens leaf's TUI with --watch. Interactive Mode needs the
         file on disk; a never-saved buffer errors.
 
-        Inside a Static Viewer: q or <Esc> closes; j/k, <C-d>/<C-u> and
-        the mouse wheel scroll the render (a terminal buffer with full
-        scrollback). Inside an Interactive Viewer: the wheel scrolls too —
+        The render binds no keys of its own. Close it like any buffer:
+        <leader>bd, :bd, bufferline close — or run :Leaf again in its
+        window or its source file. Scroll a Static render with j/k,
+        <C-d>/<C-u> and the mouse wheel (a terminal buffer with full
+        scrollback). Inside an Interactive Viewer the wheel scrolls too —
         leaf.nvim forwards it as arrow keys, since Neovim does not forward
-        wheel events to mouse-capturing terminal jobs (see
-        leaf-config `scroll_lines` for the step); leaf's own quit key
-        exits. No plugin keys shadow your bindings: use the native
-        <C-\><C-n> to leave terminal mode, then q or <Esc> closes.
+        wheel events to mouse-capturing terminal jobs (see leaf-config
+        `scroll_lines` for the step); leaf's own quit key exits, and the
+        native <C-\><C-n> leaves terminal mode for your mappings.
 
         Both modes show a one-line key hint in the winbar; disable with
         `show_hints = false`.

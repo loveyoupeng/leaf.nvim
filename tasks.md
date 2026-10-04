@@ -193,3 +193,17 @@ terminal inside their managed area.
 - [x] Take-over skips non-content windows (sidebar/panel guard) — viewer.target_window; real-profile e2e
 - [x] Picker lists the *current working directory* with a pure-Lua walk (no ripgrep dependency — absent in the target env and silently yielded 0 entries) and fzf_exec fed an entry table (argv table became bogus pickable tokens) — e2e listing + selection open
 - [x] Docs: README, doc/leaf.txt, SPEC.md (toggle/placement semantics)
+
+## 12: No plugin keybindings — close via the user's own buffer tooling
+
+**Blocked by:** 10
+
+**What to build:** remove the buffer-local `q`/`<Esc>` close maps (they
+shadow user/ LazyVim bindings). The render is a plain listed buffer:
+closing goes through `BufWipeout` (`:bd`, `<leader>bd`, bufferline
+pick-close), which the Viewer already watches. Winbar hints point at those
+paths.
+
+- [x] No `q`/`<Esc>` maps on frames; smoke guards `maparg("q")` stays unbound and drives close via `nvim_buf_delete` (the :bd path)
+- [x] winbar hints reference `<leader>bd` close; `<C-\>` no-shadow guard stays
+- [x] Docs: README, doc/leaf.txt, SPEC.md (story 9, Static/Interactive bullets)

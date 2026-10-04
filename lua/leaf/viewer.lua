@@ -309,9 +309,9 @@ apply_hint = function(st)
     return
   end
   if st.request.mode == "interactive" then
-    vim.wo[win].winbar = " leaf · wheel scrolls · <C-\\><C-n> your keys "
+    vim.wo[win].winbar = " leaf · wheel scrolls · <C-\\><C-n> your keys · <leader>bd close "
   else
-    vim.wo[win].winbar = " leaf · q/<Esc> close · j/k · <C-d>/<C-u> scroll "
+    vim.wo[win].winbar = " leaf · <leader>bd close · j/k · <C-d>/<C-u> · wheel scroll "
   end
 end
 
@@ -360,13 +360,9 @@ local function fresh_frame(st)
     "leaf://" .. (src and vim.fn.fnamemodify(src, ":t") or ("buffer-" .. tostring(st.request.source.bufnr)))
   )
   vim.bo[buf].filetype = "leaf"
-  local opts = { silent = true, buffer = buf }
-  vim.keymap.set("n", "q", function()
-    close_mapping(st)
-  end, opts)
-  vim.keymap.set("n", "<Esc>", function()
-    close_mapping(st)
-  end, opts)
+  -- No buffer-local keys: the render is a normal listed buffer, closed with
+  -- the user's own tooling (<leader>bd / :bd / bufferline); the BufWipeout
+  -- watch in bind_wipe is what cleans the Viewer up.
   bind_wipe(st, buf)
   return buf
 end
