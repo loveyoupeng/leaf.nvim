@@ -11,6 +11,8 @@ local M = {}
 ---@field width_ratio number Float width as a ratio of the editor
 ---@field height_ratio number Float height as a ratio of the editor
 ---@field split_ratio number Split width as a ratio of the source window
+---@field scroll_lines integer Lines an Interactive Viewer scrolls per wheel notch
+---@field show_hints boolean Key hints in the Viewer's winbar
 ---@field markdown_filetypes string[] Filetypes treated as Markdown
 ---@field markdown_extensions string[] File extensions treated as Markdown
 
@@ -23,6 +25,8 @@ local M = {}
 ---@field width_ratio? number
 ---@field height_ratio? number
 ---@field split_ratio? number
+---@field scroll_lines? integer
+---@field show_hints? boolean
 ---@field markdown_filetypes? string[]
 ---@field markdown_extensions? string[]
 
@@ -36,6 +40,8 @@ M.defaults = {
   width_ratio = 0.7,
   height_ratio = 0.7,
   split_ratio = 0.5,
+  scroll_lines = 3,
+  show_hints = true,
   markdown_filetypes = {
     "markdown",
     "markdown.pandoc",

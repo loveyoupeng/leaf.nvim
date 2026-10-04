@@ -94,7 +94,16 @@ file under its cursor instead.
   verified against its source). Read-only; `q`/`<Esc>` close.
 - **Interactive Mode**: `termopen("leaf --watch <path>")` in the window's
   buffer. Keys pass to the TUI; leaf's quit ends the job and the plugin
-  wipes the window. A `<C-\>` terminal-map force-closes.
+  wipes the window. A `<C-\>` terminal-map force-closes. Mouse wheel is
+  forwarded manually: Neovim does not deliver wheel events to
+  mouse-capturing terminal jobs (verified empirically — the event reaches
+  Nvim's input layer and dies there), so the viewer maps
+  `<ScrollWheelUp/Down>` to `chansend` of arrow keys — leaf's line-scroll
+  binding — `scroll_lines = 3` at a time. No terminal-specific escape
+  protocols involved.
+- **Scrolling** (both modes): Static frames are terminal buffers with full
+  scrollback — `j`/`k`/`<C-d>`/`<C-u>`/wheel work natively. A one-line
+  key hint sits in the Viewer's winbar (`show_hints = true` default).
 - **Placement rule** (`position = "auto"`, default): a Buffer Source
   renders in a Split right of the invoking window (`split_ratio = 0.5`); a
   File Source (explicit path, explorer node, picker selection) renders in
@@ -143,7 +152,8 @@ file under its cursor instead.
     availability.
 - **Configuration surface**: `leaf_path`, `interactive = false`,
   `position = "auto" | "split" | "float" | "tab"`, `theme`,
-  `border = "rounded"`, `width_ratio`, `height_ratio`, `split_ratio = 0.5`.
+  `border = "rounded"`, `width_ratio`, `height_ratio`, `split_ratio = 0.5`,
+  `scroll_lines = 3`, `show_hints = true`.
 - **Dependencies**: zero hard plugin dependencies. fzf-lua and neo-tree
   are `pcall`-ed at their entry points; the user declares whichever they
   actually use.

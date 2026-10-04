@@ -115,3 +115,23 @@ off the source path (`BufWritePost` pattern), not the owning buffer.
 - [x] Verified against the real LazyVim profile with real neo-tree (headless e2e driver): probe, tab render, cross-tab toggle close, typed error
 - [x] Picker cut down to fzf-lua only; the never-installable telescope backend and `:Telescope leaf` extension removed — picker.lua, health.lua, `lua/telescope/` deleted, docs updated
 - [x] Docs: CONTEXT.md (Explorer term, Tab placement), SPEC.md, README.md, doc/leaf.txt
+
+## 08: Scrolling — wheel forwarding into the TUI, key hints
+
+**Blocked by:** 01, 04
+
+**What to build:** make scrolling obvious and working in both Modes. Static
+frames are terminal buffers with full scrollback — keys/wheel work natively,
+no code needed beyond a hint. Neovim does not forward wheel events to
+mouse-capturing terminal jobs (verified empirically: the event reaches
+Nvim's input layer and dies), so the Interactive Viewer maps
+`<ScrollWheelUp/Down>` in terminal mode and `chansend`s arrow keys — leaf's
+line-scroll binding — `scroll_lines` (default 3) per notch. No CLI or
+terminal-protocol dependency. Both modes get a one-line key hint in the
+winbar (`show_hints`). Plan originally involved OSC cell-size queries,
+kitty keyboard protocol, and `--scroll` in the leaf CLI — all dropped as
+unneeded or undeliverable in this transport (evidence in commit history).
+
+- [x] Wheel events forwarded into the interactive TUI as arrow-key scrolls — smoke step 6
+- [x] Winbar key hints in both modes — smoke steps 1c/6; `show_hints` option, `scroll_lines` option
+- [x] Docs: README, doc/leaf.txt, SPEC.md configuration surface + decisions

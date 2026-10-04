@@ -254,6 +254,19 @@ local function attach_static(request)
   render_static()
 end
 
+---Key hints on the Viewer's winbar; the window persists across frame
+---swaps, so this is set once per open.
+local function apply_hint()
+  if not config.options.show_hints then
+    return
+  end
+  if state.request.mode == "interactive" then
+    vim.wo[state.win].winbar = " leaf · wheel scrolls · <C-\\> force-close "
+  else
+    vim.wo[state.win].winbar = " leaf · q/<Esc> close · j/k · <C-d>/<C-u> scroll "
+  end
+end
+
 ---Interactive Mode: run the leaf TUI in the window.
 ---@param request leaf.Request
 local function attach_interactive(request)
@@ -273,6 +286,22 @@ local function attach_interactive(request)
   end)
   -- Escape hatch when the TUI misbehaves.
   vim.keymap.set("t", "<C-\\>", close_mapping, { buffer = buf, desc = "Close leaf viewer" })
+  -- Neovim does not forward wheel events to mouse-capturing terminal jobs;
+  -- forward them ourselves as arrow keys (the TUI's line scroll). Arrows
+  -- over j/k so they stay harmless if a leaf popup/search has key focus.
+  local function forward_wheel(down)
+    if not state or not state.job then
+      return
+    end
+    local seq = string.rep(down and "\x1b[B" or "\x1b[A", math.max(1, config.options.scroll_lines))
+    pcall(vim.fn.chansend, state.job, seq)
+  end
+  vim.keymap.set("t", "<ScrollWheelDown>", function()
+    forward_wheel(true)
+  end, { buffer = buf, desc = "Scroll leaf viewer down" })
+  vim.keymap.set("t", "<ScrollWheelUp>", function()
+    forward_wheel(false)
+  end, { buffer = buf, desc = "Scroll leaf viewer up" })
   vim.cmd("startinsert")
 end
 
@@ -312,6 +341,7 @@ function M.open(request)
       vim.cmd("wincmd p")
     end
   end
+  apply_hint()
 end
 
 return M

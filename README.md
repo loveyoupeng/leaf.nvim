@@ -39,8 +39,13 @@ picker. glow.nvim-style glue, in the spirit of LazyVim.
   file in a new tab; a non-Markdown file or directory errors
 - `:Leaf` anywhere else (non-Markdown buffer, nothing to infer) — opens the
   Markdown **Picker** (fzf-lua)
-- Static viewer keys: `q`/`<Esc>` close. Interactive: use leaf's own quit;
-  `<C-\>` force-closes.
+- Static viewer keys: `q`/`<Esc>` close; `j`/`k`/`<C-d>`/`<C-u>` and the
+  mouse wheel scroll the render (it's a normal terminal buffer, full
+  scrollback). Interactive: wheel scrolls (forwarded as arrow keys —
+  Neovim does not forward wheel events to terminal apps), leaf's own keys
+  quit; `<C-\>` force-closes.
+- Both modes show a one-line key hint in the winbar; hide with
+  `show_hints = false`.
 
 Unsaved edits render in static mode (buffer snapshot). Interactive mode
 tracks the file on disk, so untitled buffers get an instructive error
@@ -68,6 +73,8 @@ require("leaf").setup({
   width_ratio = 0.7,      -- float width
   height_ratio = 0.7,     -- float height
   split_ratio = 0.5,      -- split width, relative to the source window
+  scroll_lines = 3,       -- lines per wheel notch in the interactive viewer
+  show_hints = true,      -- key hints in the viewer winbar
   markdown_filetypes = { "markdown", "markdown.pandoc", "markdown.gfm", "vimwiki", "telekasten" },
   markdown_extensions = { "md", "markdown", "mkd", "mkdn", "mdwn", "mdown", "mdtxt", "mdtext", "rmd", "wiki" },
 })

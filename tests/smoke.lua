@@ -4,6 +4,7 @@ local script = debug.getinfo(1, "S").source:sub(2)
 local repo = vim.fn.fnamemodify(script, ":h:h")
 vim.opt.runtimepath:prepend(repo)
 vim.cmd("filetype on")
+vim.o.mouse = "a" -- wheel events become <ScrollWheel*> keys only when mouse is on
 
 local leaf = require("leaf")
 leaf.setup({})
@@ -54,6 +55,17 @@ if not viewer_has("Smoke Title") then
 end
 if not viewer_has("unsaved draft words") then
   fail("unsaved buffer content missing from the Viewer")
+end
+
+-- 1c. Static viewer carries a scroll-hint winbar.
+local hint_win
+for _, win in ipairs(vim.api.nvim_list_wins()) do
+  if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "leaf" then
+    hint_win = win
+  end
+end
+if not vim.wo[hint_win].winbar:find("<Esc>", 1, true) then
+  fail("static viewer shows no hint winbar: " .. vim.inspect(vim.wo[hint_win].winbar))
 end
 
 -- 2. Live re-render on save (static, buffer source).
@@ -145,11 +157,70 @@ if vim.api.nvim_get_current_tabpage() ~= main_tab then
 end
 vim.fn.delete(third)
 
--- 6. Interactive Mode: opens on the saved file, closes cleanly via API.
+-- 6. Interactive Mode: hint winbar, wheel forwarded as scroll keys, closes cleanly.
+local big = vim.fn.tempname() .. ".md"
+local big_lines = { "# Big Doc", "" }
+for i = 1, 200 do
+  table.insert(big_lines, ("body line %03d body"):format(i))
+end
+vim.fn.writefile(big_lines, big)
+vim.cmd("edit " .. vim.fn.fnameescape(big))
 leaf.toggle({ fargs = {}, bang = true })
-vim.wait(1500, function()
+if not vim.wait(4000, function()
+  return leaf.is_open()
+end, 100) then
+  fail("interactive viewer did not open")
+end
+local iwin = vim.api.nvim_get_current_win()
+if vim.bo[vim.api.nvim_win_get_buf(iwin)].filetype ~= "leaf" then
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "leaf" then
+      iwin = win
+    end
+  end
+end
+vim.api.nvim_set_current_win(iwin)
+if not vim.wo[iwin].winbar:find("force-close", 1, true) then
+  fail("interactive viewer shows no hint winbar: " .. vim.inspect(vim.wo[iwin].winbar))
+end
+local function mu_has(text)
+  for _, l in ipairs(viewer_lines()) do
+    if l:find(text, 1, true) then
+      return true
+    end
+  end
   return false
-end, 100) -- let the TUI job settle headlessly regardless of outcome
+end
+if not vim.wait(6000, function()
+  return mu_has("body line 001 body")
+end, 100) then
+  fail("interactive TUI never painted the document")
+end
+-- The wheel binding exists on the frame buffer and its mechanism — arrow
+-- keys into the job's pty — genuinely scrolls the TUI. (Headless feedkeys
+-- cannot synthesize positioned mouse events; the two halves of the wheel
+-- path are asserted instead of the keystroke itself.)
+do
+  local map = vim.fn.maparg("<ScrollWheelDown>", "t", false, true)
+  if type(map) ~= "table" or map.buffer ~= 1 then
+    fail("interactive viewer lacks the terminal-mode wheel binding")
+  end
+  local chan = vim.bo[vim.api.nvim_win_get_buf(iwin)].channel
+  for _ = 1, 3 do
+    vim.fn.chansend(chan, "\x1b[B")
+  end
+  if not vim.wait(6000, function()
+    return not mu_has("body line 001 body")
+  end, 100) then
+    fail("arrow keys into the job did not scroll the TUI")
+  end
+  for _ = 1, 3 do
+    vim.fn.chansend(chan, "\x1b[A")
+  end
+end
+vim.wait(3000, function()
+  return false
+end, 100)
 leaf.close()
 if leaf.is_open() then
   fail("interactive viewer did not close")
@@ -169,6 +240,8 @@ if not notified or not notified.msg:find("saved file", 1, true) then
   fail("interactive unsaved-buffer error not delivered: " .. vim.inspect(notified))
 end
 vim.cmd("bwipeout!")
+vim.cmd("bwipeout! " .. vim.fn.fnameescape(big))
+vim.fn.delete(big)
 
 -- 8. Missing binary → error notification, no crash.
 require("leaf.config").setup({ leaf_path = "/nonexistent/leaf" })

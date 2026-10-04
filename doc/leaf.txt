@@ -51,8 +51,16 @@ COMMANDS                                                        *leaf-commands*
         :Leaf! opens leaf's TUI with --watch. Interactive Mode needs the
         file on disk; a never-saved buffer errors.
 
-        Inside a Static Viewer: q or <Esc> closes. Inside an Interactive
-        Viewer: leaf's own quit key exits; <C-\> force-closes.
+        Inside a Static Viewer: q or <Esc> closes; j/k, <C-d>/<C-u> and
+        the mouse wheel scroll the render (a terminal buffer with full
+        scrollback). Inside an Interactive Viewer: the wheel scrolls too —
+        leaf.nvim forwards it as arrow keys, since Neovim does not forward
+        wheel events to mouse-capturing terminal jobs (see
+        leaf-config `scroll_lines` for the step); leaf's own quit key
+        exits; <C-\> force-closes.
+
+        Both modes show a one-line key hint in the winbar; disable with
+        `show_hints = false`.
 
 The Picker has no standalone command: it opens as the |:Leaf| fallback
 when nothing is inferable. It lists Markdown files under the project root
@@ -71,6 +79,8 @@ require("leaf").setup({}) ~
   width_ratio                number    Float width ratio                  0.7
   height_ratio               number    Float height ratio                 0.7
   split_ratio                number    Split width ratio                  0.5
+  scroll_lines               number    Lines per wheel notch, Interactive    3
+  show_hints                 boolean   Key hints in the Viewer's winbar   true
   markdown_filetypes         string[]  filetypes treated as Markdown
   markdown_extensions        string[]  extensions treated as Markdown
 

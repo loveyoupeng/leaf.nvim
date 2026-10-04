@@ -10,6 +10,8 @@ describe("leaf.config", function()
     assert.are.same("auto", config.options.position)
     assert.are.same("rounded", config.options.border)
     assert.are.same(0.5, config.options.split_ratio)
+    assert.are.same(3, config.options.scroll_lines)
+    assert.are.same(true, config.options.show_hints)
     assert.is_nil(config.options.leaf_path)
   end)
 
