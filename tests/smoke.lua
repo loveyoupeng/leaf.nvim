@@ -306,6 +306,47 @@ if leaf.is_open() then
   fail("post-coexistence close failed")
 end
 
+-- 4g. Second explorer-driven open reuses the render window: once the
+-- content window hosts a terminal frame, "no content window" must fall
+-- back to the render window — never the sidebar (edgy rebalances a taken
+-- panel into a stray split; user-reported bug).
+leaf.toggle({ fargs = { other } })
+if not vim.wait(4000, function()
+  return leaf.is_open()
+end, 50) then
+  fail("viewer did not reopen for panel-target test")
+end
+vim.cmd("vsplit")
+local side_win2 = vim.api.nvim_get_current_win()
+local fake_sidebar2 = vim.api.nvim_create_buf(false, true)
+vim.bo[fake_sidebar2].filetype = "neo-tree"
+vim.api.nvim_win_set_buf(side_win2, fake_sidebar2)
+vim.api.nvim_set_current_win(side_win2)
+local sixth = vim.fn.tempname() .. ".md"
+vim.fn.writefile({ "# Sixth File" }, sixth)
+local wins_pre = #vim.api.nvim_list_wins()
+leaf.toggle({ fargs = { sixth } })
+if not viewer_has("Sixth File") then
+  fail("second explorer open never rendered")
+end
+if #vim.api.nvim_list_wins() ~= wins_pre then
+  fail("second explorer open created a window: " .. wins_pre .. " -> " .. #vim.api.nvim_list_wins())
+end
+if vim.bo[vim.api.nvim_win_get_buf(side_win2)].filetype ~= "neo-tree" then
+  fail("the sidebar window was taken over")
+end
+if vim.bo[vim.api.nvim_win_get_buf(host_win)].filetype ~= "leaf" then
+  fail("the render did not reuse the render window")
+end
+vim.api.nvim_win_close(side_win2, true)
+leaf.close()
+leaf.toggle({ fargs = { other } })
+leaf.close()
+if leaf.is_open() then
+  fail("post-4g close failed")
+end
+vim.fn.delete(sixth)
+
 -- 6. Interactive Mode: hint winbar, wheel forwarded as scroll keys, closes cleanly.
 local big = vim.fn.tempname() .. ".md"
 local big_lines = { "# Big Doc", "" }

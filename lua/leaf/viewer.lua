@@ -31,7 +31,7 @@ local M = {}
 local viewers = {}
 
 -- forward declarations (mutually recursive lifecycle functions)
-local close_state, apply_hint
+local close_state, apply_hint, target_window
 
 ---Window the frame should go to: wherever it's displayed; else the owning
 ---window for owned placements; else the take-over home until first shown
@@ -116,14 +116,8 @@ function M.focus(st)
     return
   end
   if st.request.placement == "window" then
-    -- hidden frame: bring it up where the user is
-    local target = vim.api.nvim_get_current_win()
-    if vim.bo[vim.api.nvim_win_get_buf(target)].buftype ~= "" then
-      local prev = vim.fn.win_getid(vim.fn.winnr("#"))
-      if prev ~= 0 and prev ~= target and vim.bo[vim.api.nvim_win_get_buf(prev)].buftype == "" then
-        target = prev
-      end
-    end
+    -- hidden frame: surface it in the render/content window (never a panel)
+    local target = target_window()
     vim.api.nvim_win_set_buf(target, st.buf)
     vim.api.nvim_set_current_win(target)
     apply_hint(st)
@@ -245,9 +239,11 @@ end
 ---Only a content window (normal buffer) is eligible — never a sidebar or
 ---panel, whose manager (neo-tree, edgy) would fight the take-over by
 ---rebalancing into a new window. From a panel, fall back to the previously
----visited content window, then any content window in the tab.
+---visited content window, then any content window in the tab, then the
+---window already showing a render (the de-facto content area — the render
+---being replaced stays alive as a listed buffer). Never a panel.
 ---@return integer win
-local function target_window()
+target_window = function()
   local cur = vim.api.nvim_get_current_win()
   local function is_content(win)
     return vim.api.nvim_win_is_valid(win) and vim.bo[vim.api.nvim_win_get_buf(win)].buftype == ""
@@ -264,7 +260,18 @@ local function target_window()
       return w
     end
   end
-  -- Degenerate layout (no content window at all): take the current one.
+  if viewers[cur] then
+    return cur
+  end
+  -- no content window anywhere: reuse a window showing a render
+  for buf in pairs(viewers) do
+    local w = vim.fn.bufwinid(buf)
+    if w ~= -1 then
+      return w
+    end
+  end
+  -- Truly degenerate (only panels): take the current one; better a usable
+  -- render than an error.
   return cur
 end
 
