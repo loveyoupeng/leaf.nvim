@@ -6,7 +6,7 @@ describe("leaf.config", function()
   end)
 
   it("applies documented defaults", function()
-    assert.are.same(false, config.options.interactive)
+    assert.are.same(true, config.options.interactive)
     assert.are.same("auto", config.options.position)
     assert.are.same("rounded", config.options.border)
     assert.are.same(0.5, config.options.split_ratio)

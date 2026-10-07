@@ -43,22 +43,22 @@ describe("leaf.resolve", function()
   describe("mode", function()
     -- leaf CLI exists on this machine (verified in checkhealth); these tests
     -- only run meaningfully when the guard passes.
-    it("defaults to static", function()
-      assert.are.same("static", resolve.decide(ctx()).request.mode)
+    it("defaults to interactive (embedded TUI) for any open path", function()
+      assert.are.same("interactive", resolve.decide(ctx()).request.mode)
     end)
 
-    it("flips to interactive on bang", function()
-      assert.are.same("interactive", resolve.decide(ctx({ bang = true })).request.mode)
-    end)
-
-    it("flips interactive default back to static on bang", function()
-      config.setup({ interactive = true })
+    it("flips to static on bang", function()
       assert.are.same("static", resolve.decide(ctx({ bang = true })).request.mode)
     end)
 
-    it("keeps interactive as the configured default without bang", function()
-      config.setup({ interactive = true })
-      assert.are.same("interactive", resolve.decide(ctx()).request.mode)
+    it("flips a static-configured default to interactive on bang", function()
+      config.setup({ interactive = false })
+      assert.are.same("interactive", resolve.decide(ctx({ bang = true })).request.mode)
+    end)
+
+    it("keeps static as the configured default without bang", function()
+      config.setup({ interactive = false })
+      assert.are.same("static", resolve.decide(ctx()).request.mode)
     end)
   end)
 
@@ -109,15 +109,15 @@ describe("leaf.resolve", function()
       assert.are.same(current_file, source.path)
     end)
 
-    it("unnamed buffer interactive fails with need_saved_file", function()
-      local decision = resolve.decide(ctx({ bang = true, bufname = "" }))
+    it("unnamed buffer on the default interactive mode fails with need_saved_file", function()
+      local decision = resolve.decide(ctx({ bufname = "" }))
       assert.are.same("error", decision.kind)
       assert.are.same("need_saved_file", decision.err)
       assert.truthy(resolve.error_message(decision):find("saved file"))
     end)
 
-    it("unnamed buffer static renders the buffer without a path", function()
-      local source = resolve.decide(ctx({ bufname = "" })).request.source
+    it("unnamed buffer static (bang escape hatch) renders the buffer without a path", function()
+      local source = resolve.decide(ctx({ bang = true, bufname = "" })).request.source
       assert.are.same("buffer", source.kind)
       assert.is_nil(source.path)
     end)

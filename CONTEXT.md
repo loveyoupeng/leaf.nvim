@@ -13,9 +13,11 @@ buffer.
 _Avoid_: preview window, popup, pane
 
 **Mode**:
-How the Viewer produces its render, per invocation. **Static**: one-shot
-`leaf --inline` output piped into a terminal buffer. **Interactive**: the
-leaf TUI running live inside the window.
+How the Viewer produces its render, per invocation. **Interactive** (the
+default): leaf's TUI embedded live in the window — TOC sidebar, search,
+themes; every leaf keybinding works while focused. **Static**: one-shot
+`leaf --inline` output piped into a terminal buffer; the cheap preview,
+reachable via `:Leaf!`.
 _Avoid_: style, flavor
 
 **Placement**:

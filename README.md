@@ -35,8 +35,9 @@ fuzzy Markdown picker. glow.nvim-style glue, in the spirit of LazyVim.
 - `:Leaf path/to/file.md` — render another file **in the same window** like
   a normal `:edit`; your layout doesn't move, and closing brings your
   buffer back. Explicit path while a Viewer is open retargets it.
-- `:Leaf!` — bang flips the mode: leaf's interactive TUI with `--watch`,
-  live-reloading whenever you `:w` in Neovim
+- `:Leaf!` — bang flips the mode to a one-shot static render (default is
+  the embedded leaf TUI with `--watch`: TOC sidebar, search, themes — live
+  reload on every `:w`)
 - `:Leaf` with the cursor on a Markdown file in **neo-tree** — render that
   file in the main window, sidebar untouched; a non-Markdown file or
   directory errors
@@ -49,7 +50,9 @@ fuzzy Markdown picker. glow.nvim-style glue, in the spirit of LazyVim.
   in Interactive the wheel is forwarded as arrow keys (Neovim does not
   forward wheel events to terminal apps), leaf's own keys quit the TUI,
   and `<C-\><C-n>` returns to normal mode where all your mappings live.
-  No keybindings are shadowed.
+  Inside the render box, `<C-h/j/k/l>` jumps windows and `<leader>bd`
+  closes the render — leaf never binds those chords, so window muscle
+  memory works without leaving terminal mode. No keybindings are shadowed.
 - The render is a normal listed buffer (`leaf://<file>` in your
   bufferline). If you `<cr>`-open a file in the explorer while it shows,
   the file takes its window — no surprise splits.
@@ -78,7 +81,7 @@ placement with `"window"` / `"split"` / `"float"` / `"tab"`.
 ```lua
 require("leaf").setup({
   leaf_path = nil,        -- leaf binary; nil = search $PATH
-  interactive = false,    -- default mode; bang on :Leaf flips it
+  interactive = true,     -- default mode: embed leaf's TUI; :Leaf! gives static
   position = "auto",      -- "auto" | "window" | "split" | "float" | "tab"
   theme = nil,            -- leaf --theme
   border = "rounded",     -- float border

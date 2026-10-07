@@ -4,7 +4,7 @@ local M = {}
 
 ---@class leaf.Config
 ---@field leaf_path? string Path/executable name of the leaf binary; nil = search $PATH
----@field interactive boolean Default Mode: interactive TUI instead of static render
+---@field interactive boolean Default Mode: embed leaf's TUI (false = static render; bang flips either way)
 ---@field position "auto"|"split"|"float"|"tab"|"window" Viewer placement
 ---@field theme? string Leaf theme passed via --theme
 ---@field border string Float border style
@@ -33,7 +33,7 @@ local M = {}
 ---@type leaf.Config
 M.defaults = {
   leaf_path = nil,
-  interactive = false,
+  interactive = true,
   position = "auto",
   theme = nil,
   border = "rounded",

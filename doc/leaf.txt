@@ -56,9 +56,15 @@ COMMANDS                                                        *leaf-commands*
         invoked from an explorer sidebar) without disturbing the layout;
         closing restores the displaced buffer.
 
-        Bang flips the configured default Mode: with interactive = false,
-        :Leaf! opens leaf's TUI with --watch. Interactive Mode needs the
-        file on disk; a never-saved buffer errors.
+        Bang flips the Mode: default is the embedded TUI (full leaf
+        feature set — TOC sidebar, search, themes — reloading on :w via
+        --watch); :Leaf! gives the one-shot static render. Interactive
+        Mode needs the file on disk; a never-saved buffer errors — save
+        first, or use :Leaf! for a static preview of unsaved content.
+
+        Inside a render, terminal-mode <C-h>/<C-j>/<C-k>/<C-l> jump
+        windows and <leader>bd closes the render — leaf binds none of
+        those, so LazyVim window navigation works without leaving the box.
 
         The render binds no keys of its own. Close it like any buffer:
         <leader>bd, :bd, bufferline close — or run :Leaf again in its
@@ -83,7 +89,7 @@ SETUP                                                              *leaf-setup*
 
 require("leaf").setup({}) ~
   leaf_path                  string?   leaf binary; nil = $PATH lookup
-  interactive                boolean   default Mode                     false
+  interactive                boolean   default Mode                      true
   position                   string    "auto"|"window"|"split"|"float"|"tab"
                                                                  "auto"
   theme                      string?   leaf --theme value

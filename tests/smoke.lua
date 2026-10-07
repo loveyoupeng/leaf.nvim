@@ -37,13 +37,14 @@ local function fail(msg)
 end
 
 -- 1. Static Viewer on the current Markdown buffer (auto → split placement).
+-- Static arrives via :Leaf! — the default mode embeds the TUI.
 local src = vim.fn.tempname() .. ".md"
 vim.fn.writefile({ "# Smoke Title", "", "body text with **bold**" }, src)
 vim.cmd("edit " .. vim.fn.fnameescape(src))
 
 -- 1b. Unsaved change must appear without writing first.
 vim.api.nvim_buf_set_lines(0, 0, 0, false, { "unsaved draft words" })
-leaf.toggle({})
+leaf.toggle({ bang = true })
 if not leaf.is_open() then
   fail("viewer did not open")
 end
@@ -355,7 +356,7 @@ for i = 1, 200 do
 end
 vim.fn.writefile(big_lines, big)
 vim.cmd("edit " .. vim.fn.fnameescape(big))
-leaf.toggle({ fargs = {}, bang = true })
+leaf.toggle({ fargs = {} }) -- default mode = interactive TUI now
 if not vim.wait(4000, function()
   return leaf.is_open()
 end, 100) then
@@ -375,6 +376,13 @@ if not vim.wo[iwin].winbar:find("wheel scrolls", 1, true) then
 end
 if vim.fn.maparg("<C-\\>", "t", false, true).buffer == 1 then
   fail("interactive viewer must not shadow the native <C-\\><C-n> escape")
+end
+-- the render box keeps LazyVim-style window nav + buffer close in t-mode
+if vim.fn.maparg("<C-h>", "t", false, true).buffer ~= 1 then
+  fail("leaf frame lacks the <C-h> window-nav map")
+end
+if vim.fn.maparg("<leader>bd", "t", false, true).buffer ~= 1 then
+  fail("leaf frame lacks the <leader>bd close map")
 end
 local function mu_has(text)
   for _, l in ipairs(viewer_lines()) do
@@ -427,7 +435,7 @@ local old_notify = vim.notify
 vim.notify = function(msg, level)
   notified = { msg = msg, level = level }
 end
-leaf.toggle({ bang = true })
+leaf.toggle({}) -- default mode is interactive: unnamed buffer must error
 vim.notify = old_notify
 if not notified or not notified.msg:find("saved file", 1, true) then
   fail("interactive unsaved-buffer error not delivered: " .. vim.inspect(notified))

@@ -42,11 +42,12 @@ file under its cursor instead.
    so that the render never silently goes stale.
 4. As a Markdown author, I want unsaved buffer changes to appear in the
    static render so that I can preview before committing to disk.
-5. As a Markdown author, I want `:Leaf!` to open leaf's interactive TUI
-   instead, so that I can use navigation and themes while it live-reloads
-   on save.
-6. As a Markdown author on a brand-new unsaved buffer, I want `:Leaf!` to
-   tell me to save the file first, so that I understand interactive mode
+5. As a Markdown author, I want the viewer to embed leaf's interactive TUI
+   by default (TOC sidebar, search, themes, `--watch` reload), with LazyVim
+   window navigation and buffer close working inside it, so the render is
+   a full citizen of my layout.
+6. As a Markdown author on a brand-new unsaved buffer, I want a clear
+   "save first" error — or `:Leaf!` for a static one-shot — because the TUI
    needs an on-disk file.
 7. As a Markdown author, I want `:Leaf path/to/file.md` to render a file
    other than the current buffer in the same window like a normal `:edit`,
@@ -139,7 +140,7 @@ file under its cursor instead.
   render, even one loaded after the Viewer opened (buffer-local only for
   never-saved buffers); Interactive relies on leaf's own watcher.
   Rationale: ADR-0001.
-- **`:Leaf[!] [file?]`** — bang flips the configured default Mode. Source
+- **`:Leaf[!] [file?]`** — bang flips Mode (default: embedded TUI). Source
   precedence: explicit arg → focused Markdown buffer → neo-tree node under
   the cursor (non-Markdown file or directory → `not_markdown` error) →
   Picker fallback (error if fzf-lua is absent). Viewers are per-window and
@@ -166,7 +167,9 @@ file under its cursor instead.
     Viewer). Single backend: fzf-lua, probed lazily at open time.
   - *health*: `:checkhealth leaf` — binary presence/version, picker plugin
     availability.
-- **Configuration surface**: `leaf_path`, `interactive = false`,
+- **Configuration surface**: `leaf_path`,
+  `interactive = true` (embed leaf's TUI by default — TOC, search, themes;
+  `:Leaf!` gives the static one-shot, e.g. for unsaved buffer previews),
   `position = "auto" | "split" | "float" | "tab"`, `theme`,
   `border = "rounded"`, `width_ratio`, `height_ratio`, `split_ratio = 0.5`,
   `scroll_lines = 3`, `show_hints = true`.

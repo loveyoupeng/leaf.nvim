@@ -367,9 +367,22 @@ local function fresh_frame(st)
     "leaf://" .. (src and vim.fn.fnamemodify(src, ":t") or ("buffer-" .. tostring(st.request.source.bufnr)))
   )
   vim.bo[buf].filetype = "leaf"
-  -- No buffer-local keys: the render is a normal listed buffer, closed with
-  -- the user's own tooling (<leader>bd / :bd / bufferline); the BufWipeout
-  -- watch in bind_wipe is what cleans the Viewer up.
+  -- Terminal-mode window navigation inside the render box: leaf's TUI binds
+  -- none of these chords, so they shadow nothing and keep LazyVim-style
+  -- window muscle memory alive without leaving terminal mode. <leader>bd
+  -- closes this Viewer like any LazyVim buffer; in normal mode the user's
+  -- own <leader>bd already works and nothing here shadows it.
+  for _, nav in ipairs({ { "<C-h>", "h" }, { "<C-j>", "j" }, { "<C-k>", "k" }, { "<C-l>", "l" } }) do
+    vim.keymap.set(
+      "t",
+      nav[1],
+      "<Cmd>wincmd " .. nav[2] .. "<CR>",
+      { buffer = buf, desc = "Go " .. nav[1] .. " window" }
+    )
+  end
+  vim.keymap.set("t", "<leader>bd", function()
+    close_mapping(st)
+  end, { buffer = buf, desc = "Close leaf render (this one)" })
   bind_wipe(st, buf)
   return buf
 end
@@ -485,6 +498,14 @@ local function attach_interactive(st)
       end,
     })
   end)
+  -- termopen renamed the frame to term://…; put the leaf:// name back so
+  -- the render still shows as a normal "buffer tab".
+  local src = st.request.source.path
+  pcall(
+    vim.api.nvim_buf_set_name,
+    buf,
+    "leaf://" .. (src and vim.fn.fnamemodify(src, ":t") or ("buffer-" .. tostring(st.request.source.bufnr)))
+  )
   -- No <C-\> mapping: overriding it would kill the native <C-\><C-n>
   -- terminal-mode escape, trapping the user's keys inside the TUI.
   -- Neovim does not forward wheel events to mouse-capturing terminal jobs;

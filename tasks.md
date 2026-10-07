@@ -207,3 +207,19 @@ paths.
 - [x] No `q`/`<Esc>` maps on frames; smoke guards `maparg("q")` stays unbound and drives close via `nvim_buf_delete` (the :bd path)
 - [x] winbar hints reference `<leader>bd` close; `<C-\>` no-shadow guard stays
 - [x] Docs: README, doc/leaf.txt, SPEC.md (story 9, Static/Interactive bullets)
+
+## 13: Embedded-by-default — Interactive TUI for every open path, in-box window nav
+
+**Blocked by:** 10, 12
+
+**What to build:** `interactive = true` becomes the default Mode: every
+`:Leaf` origin (arg, explorer cursor, picker, current buffer) embeds leaf's
+full TUI (TOC sidebar, search, themes, `--watch`). `:Leaf!` flips to Static
+— the escape hatch for unsaved buffer previews or the cheap one-shot. Leaf
+frames gain terminal-mode `<C-h/j/k/l>` window jumps and `<leader>bd`
+close (leaf's TUI binds none of them; navigation wins by design).
+
+- [x] Default mode interactive; bang yields static; unnamed-preview static path still works via bang — config default; resolve_spec mode block inverted; smoke bang sites updated
+- [x] t-mode nav/close maps on all frames, buffer-local — smoke step 6 guard maparg `<C-h>`/`<leader>bd`
+- [x] Real-profile e2e: default `:Leaf <path>` embeds the TUI (headings painted incl. TOC content), maps present
+- [x] Docs: CONTEXT.md (Mode default), SPEC.md (stories 5-6, config surface), README.md, doc/leaf.txt
